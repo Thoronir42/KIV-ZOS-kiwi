@@ -1,16 +1,13 @@
-#ifndef FAT_INFO_H
-#define FAT_INFO_H
+#ifndef FAT_OPERATOR_H
+#define FAT_OPERATOR_H
 
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 
-//definice na vyznam hodnot FAT tabulky
-const int FAT_UNUSED = 65535;
-const int FAT_FILE_END = 65534;
-const int FAT_BAD_CLUSTER = 65533;
 
-//struktura na boot record - nova verze
+
+// struktura na boot record - nova verze
 struct boot_record {
     char volume_descriptor[251];               //popis
     int fat_type;                             //typ FAT - pocet clusteru = 2^fat_type (priklad FAT 12 = 4096)
@@ -31,6 +28,9 @@ struct root_directory{
     unsigned int first_cluster;     //cluster ve FAT, kde soubor zacina - POZOR v cislovani root_directory ma prvni cluster index 0 (viz soubor a.txt)
 };
 
+int main_read();
+
+int main_write();
 
 
 #endif
