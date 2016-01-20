@@ -10,7 +10,11 @@ const int FAT_UNUSED = 65535;
 const int FAT_FILE_END = 65534;
 const int FAT_BAD_CLUSTER = 65533;
 
+const int FAT_COPIES = 2;
+const int RES_CLUSTER_COUNT = 10;
+
 int main_write() {
+	int i;
 
 	int alen = 100;
 	int blen = 300;
@@ -22,7 +26,10 @@ int main_write() {
 	long rd_count;
 
 	struct boot_record br;
-	unsigned int fat[4086];
+	unsigned int fat[4096 - RES_CLUSTER_COUNT];
+	for (int i = 0; i <= 4096 - RES_CLUSTER_COUNT; i++) {
+		fat[i] = FAT_UNUSED;
+	}
 
 	char cluster_a[128];
 	char cluster_b1[128];
@@ -49,6 +56,7 @@ int main_write() {
 
 	//zapisu natvrdo acko
 	fat[0] = FAT_FILE_END;
+
 	struct root_directory root_a;
 	memset(root_a.file_name, '\0', sizeof (root_a.file_name));
 	strcpy(root_a.file_name, "a.txt");
@@ -88,30 +96,26 @@ int main_write() {
 	fat[7] = FAT_UNUSED;
 	fat[8] = FAT_FILE_END;
 
-	//clearnu zbytek fatky          
-	for (int i = 9; i <= 4086; i++) {
-		fat[i] = FAT_UNUSED;
-	}
-
 	//zapis dat - boot record
 	memset(br.signature, '\0', sizeof (br.signature));
 	memset(br.volume_descriptor, '\0', sizeof (br.volume_descriptor));
 	strcpy(br.signature, "OK");
 	strcpy(br.volume_descriptor, "Testovaci data s trema soubory a.txt, b.txt a c.txt. Cecko NENI fragmentovane");
-	br.fat_copies = 2;
+	br.fat_copies = FAT_COPIES;
 	br.fat_type = 12;
 	br.cluster_size = 128;
-	br.cluster_count = 4086;
-	br.reserved_cluster_count = 10;
+	br.cluster_count = 4096 - RES_CLUSTER_COUNT;
+	br.reserved_cluster_count = RES_CLUSTER_COUNT;
 	br.root_directory_max_entries_count = 3;
 
 	unlink("output.fat");
 	fp = fopen("output.fat", "w");
 	//boot record
 	fwrite(&br, sizeof (br), 1, fp);
-	// 2x FAT
-	fwrite(&fat, sizeof (fat), 1, fp);
-	fwrite(&fat, sizeof (fat), 1, fp);
+	// FAT copies
+	for (i = 0; i < FAT_COPIES; i++) {
+		fwrite(&fat, sizeof (fat), 1, fp);
+	}
 	// root directory
 	fwrite(&root_a, sizeof (root_a), 1, fp);
 	fwrite(&root_b, sizeof (root_b), 1, fp);
@@ -176,22 +180,22 @@ int main_read() {
 	printf("FAT \n");
 	printf("-------------------------------------------------------- \n");
 	long fat_items = p_boot_record->cluster_count;
-	long l;
+	long cl;
 
 	unsigned int *fat_item;
 	fat_item = (unsigned int *) malloc(sizeof (unsigned int));
-	int j;
-	for (j = 0; j < 2; j++) {
-		printf("\nFAT KOPIE %d\n", j + 1);
-		for (l = 0; l < p_boot_record->cluster_count; l++) {
+	int fc;
+	for (fc = 0; fc < FAT_COPIES; fc++) {
+		printf("\nFAT KOPIE %d\n", fc + 1);
+		for (cl = 0; cl < fat_items; cl++) {
 			fread(fat_item, sizeof (*fat_item), 1, p_file);
 			if (*fat_item != FAT_UNUSED) {
 				if (*fat_item == FAT_FILE_END)
-					printf("%d - FILE_END\n", l);
+					printf("%d - FILE_END\n", cl);
 				else if (*fat_item == FAT_BAD_CLUSTER)
-					printf("%d - BAD_CLUSTER\n", l);
+					printf("%d - BAD_CLUSTER\n", cl);
 				else
-					printf("%d - %d\n", l, *fat_item);
+					printf("%d - %d\n", cl, *fat_item);
 
 			}
 		}
@@ -240,9 +244,9 @@ int main_checkFileLength(int threads) {
 	if (threads < 1) {
 		return 1;
 	}
-	
+
 	printf("Checking lengths");
-	
+
 	return 0;
 }
 
@@ -250,9 +254,9 @@ int main_moveClustersToStart(int threads) {
 	if (threads < 1) {
 		return 1;
 	}
-	
+
 	printf("Moving clusters");
-	
+
 	return 0;
 }
 
