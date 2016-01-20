@@ -236,3 +236,23 @@ int main_read() {
 
 }// End Of main
 
+int main_checkFileLength(int threads) {
+	if (threads < 1) {
+		return 1;
+	}
+	
+	printf("Checking lengths");
+	
+	return 0;
+}
+
+int main_moveClustersToStart(int threads) {
+	if (threads < 1) {
+		return 1;
+	}
+	
+	printf("Moving clusters");
+	
+	return 0;
+}
+
