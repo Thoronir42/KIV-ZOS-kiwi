@@ -10,8 +10,11 @@ const int FAT_UNUSED = 65535;
 const int FAT_FILE_END = 65534;
 const int FAT_BAD_CLUSTER = 65533;
 
-const int FAT_COPIES = 2;
-const int RES_CLUSTER_COUNT = 10;
+// definice zapisovych konstant
+const int WR_FAT_COPIES = 2;
+const int WR_CLUSTER_SIZE = 128;
+const int WR_MAX_CLUSTERS = 4096;
+const int WR_RES_CLUSTER_COUNT = 10;
 
 int main_write() {
 	int i;
@@ -26,18 +29,18 @@ int main_write() {
 	long rd_count;
 
 	struct boot_record br;
-	unsigned int fat[4096 - RES_CLUSTER_COUNT];
-	for (int i = 0; i <= 4096 - RES_CLUSTER_COUNT; i++) {
+	unsigned int fat[WR_MAX_CLUSTERS - WR_RES_CLUSTER_COUNT];
+	for (i = 0; i <= WR_MAX_CLUSTERS - WR_RES_CLUSTER_COUNT; i++) {
 		fat[i] = FAT_UNUSED;
 	}
 
-	char cluster_a[128];
-	char cluster_b1[128];
-	char cluster_b2[128];
-	char cluster_b3[128];
-	char cluster_c1[128];
-	char cluster_c2[128];
-	char cluster_empty[128];
+	char cluster_a[WR_CLUSTER_SIZE];
+	char cluster_b1[WR_CLUSTER_SIZE];
+	char cluster_b2[WR_CLUSTER_SIZE];
+	char cluster_b3[WR_CLUSTER_SIZE];
+	char cluster_c1[WR_CLUSTER_SIZE];
+	char cluster_c2[WR_CLUSTER_SIZE];
+	char cluster_empty[WR_CLUSTER_SIZE];
 
 	//priprava souboru
 	strcpy(cluster_empty, "");
@@ -101,11 +104,11 @@ int main_write() {
 	memset(br.volume_descriptor, '\0', sizeof (br.volume_descriptor));
 	strcpy(br.signature, "OK");
 	strcpy(br.volume_descriptor, "Testovaci data s trema soubory a.txt, b.txt a c.txt. Cecko NENI fragmentovane");
-	br.fat_copies = FAT_COPIES;
+	br.fat_copies = WR_FAT_COPIES;
 	br.fat_type = 12;
-	br.cluster_size = 128;
-	br.cluster_count = 4096 - RES_CLUSTER_COUNT;
-	br.reserved_cluster_count = RES_CLUSTER_COUNT;
+	br.cluster_size = WR_CLUSTER_SIZE;
+	br.cluster_count = WR_MAX_CLUSTERS - WR_RES_CLUSTER_COUNT;
+	br.reserved_cluster_count = WR_RES_CLUSTER_COUNT;
 	br.root_directory_max_entries_count = 3;
 
 	unlink("output.fat");
@@ -113,7 +116,7 @@ int main_write() {
 	//boot record
 	fwrite(&br, sizeof (br), 1, fp);
 	// FAT copies
-	for (i = 0; i < FAT_COPIES; i++) {
+	for (i = 0; i < WR_FAT_COPIES; i++) {
 		fwrite(&fat, sizeof (fat), 1, fp);
 	}
 	// root directory
@@ -185,7 +188,7 @@ int main_read() {
 	unsigned int *fat_item;
 	fat_item = (unsigned int *) malloc(sizeof (unsigned int));
 	int fc;
-	for (fc = 0; fc < FAT_COPIES; fc++) {
+	for (fc = 0; fc < p_boot_record->fat_copies; fc++) {
 		printf("\nFAT KOPIE %d\n", fc + 1);
 		for (cl = 0; cl < fat_items; cl++) {
 			fread(fat_item, sizeof (*fat_item), 1, p_file);
