@@ -226,7 +226,7 @@ int main_read() {
 	printf("-------------------------------------------------------- \n");
 
 	char *p_cluster = malloc(sizeof (char) * p_boot_record->cluster_size);
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < p_boot_record->cluster_count; i++) {
 		fread(p_cluster, sizeof (char) * p_boot_record->cluster_size, 1, p_file);
 		//pokud je prazdny (tedy zacina 0, tak nevypisuj obsah)
 		if (p_cluster[0] != '\0')
@@ -248,82 +248,29 @@ int main_checkFileLength(int threads) {
 	if (threads < 1) {
 		return 1;
 	}
-	printf("Checking lengths");
-
 	int i;
-	//pointery na struktury root a boot                         
+
+	struct check_farmer *p_check_farmer;
+	struct check_worker *p_check_worker[threads];
+
+	//pointery na struktury boot                         
 	struct boot_record *p_boot_record;
-	struct root_directory *p_root_directory;
-
-	//alokujeme pamet
-	p_boot_record = (struct boot_record *) malloc(sizeof (struct boot_record));
-	p_root_directory = (struct root_directory *) malloc(sizeof (struct root_directory));
-
 
 	//otevru soubor a pro jistotu skocim na zacatek           
 	p_file = fopen("output.fat", "r");
 	fseek(p_file, SEEK_SET, 0);
-
-	//prectu boot
+	
+	//init boot record
+	p_boot_record = (struct boot_record *) malloc(sizeof (struct boot_record));
 	fread(p_boot_record, sizeof (struct boot_record), 1, p_file);
-	printf("-------------------------------------------------------- \n");
-	printf("BOOT RECORD \n");
-	printf("-------------------------------------------------------- \n");
-	printf("volume_descriptor :%s\n", p_boot_record->volume_descriptor);
-	printf("fat_type :%d\n", p_boot_record->fat_type);
-	printf("fat_copies :%d\n", p_boot_record->fat_copies);
-	printf("cluster_size :%d\n", p_boot_record->cluster_size);
-	printf("root_directory_max_entries_count :%ld\n", p_boot_record->root_directory_max_entries_count);
-	printf("cluster count :%d\n", p_boot_record->cluster_count);
-	printf("reserved clusters :%d\n", p_boot_record->reserved_cluster_count);
-	printf("signature :%s\n", p_boot_record->signature);
-
-	//prectu fat_copies krat 
-	printf("-------------------------------------------------------- \n");
-	printf("FAT \n");
-	printf("-------------------------------------------------------- \n");
-	long fat_items = p_boot_record->cluster_count;
-	long cl;
-
-	unsigned int *fat_item;
-	fat_item = (unsigned int *) malloc(sizeof (unsigned int));
-	int fc;
-	for (fc = 0; fc < p_boot_record->fat_copies; fc++) {
-		printf("\nFAT KOPIE %d\n", fc + 1);
-		for (cl = 0; cl < fat_items; cl++) {
-			fread(fat_item, sizeof (*fat_item), 1, p_file);
-			if (*fat_item != FAT_UNUSED) {
-				if (*fat_item == FAT_FILE_END)
-					printf("%d - FILE_END\n", cl);
-				else if (*fat_item == FAT_BAD_CLUSTER)
-					printf("%d - BAD_CLUSTER\n", cl);
-				else
-					printf("%d - %d\n", cl, *fat_item);
-
-			}
-		}
+	
+	// create farmer-workers
+	p_check_farmer = create_check_farmer(p_file, p_boot_record);
+	for(i = 0; i < threads; i++){
+		p_check_worker[i] = create_check_worker(p_check_farmer);
 	}
-
-	//prectu root tolikrat polik je maximalni pocet zaznamu v bootu - root_directory_max_entries_count        
-	printf("-------------------------------------------------------- \n");
-	printf("ROOT DIRECTORY \n");
-	printf("-------------------------------------------------------- \n");
-
-
-	for (i = 0; i < p_boot_record->root_directory_max_entries_count; i++) {
-		fread(p_root_directory, sizeof (struct root_directory), 1, p_file);
-		printf("FILE %d \n", i);
-		printf("file_name :%s\n", p_root_directory->file_name);
-		printf("file_mod :%s\n", p_root_directory->file_mod);
-		printf("file_type :%d\n", p_root_directory->file_type);
-		printf("file_size :%d\n", p_root_directory->file_size);
-		printf("first_cluster :%d\n", p_root_directory->first_cluster);
-	}
-
-	printf("-------------------------------------------------------- \n");
-	printf("CLUSTERY - OBSAH \n");
-	printf("-------------------------------------------------------- \n");
-
+	printf("data_cluster_offset: %d\n", p_check_farmer->data_cluster_offset);
+	fseek(p_file, SEEK_SET, p_check_farmer->data_cluster_offset);
 	char *p_cluster = malloc(sizeof (char) * p_boot_record->cluster_size);
 	for (i = 0; i < 10; i++) {
 		fread(p_cluster, sizeof (char) * p_boot_record->cluster_size, 1, p_file);
@@ -333,8 +280,12 @@ int main_checkFileLength(int threads) {
 	}
 
 	//uklid
+	for(i = 0; i < threads; i++){
+		delete_check_worker(p_check_worker[i]);
+	}
+	delete_check_farmer(p_check_farmer);
+	
 	free(p_cluster);
-	free(p_root_directory);
 	free(p_boot_record);
 	fclose(p_file);
 
