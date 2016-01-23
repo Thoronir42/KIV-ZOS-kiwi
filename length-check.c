@@ -5,14 +5,14 @@
 struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boot_record) {
 	printf("Creating check_farmer\n");
 	struct check_farmer* tmp = malloc(sizeof (struct check_farmer));
+	tmp->fat_item = malloc(p_boot_record->cluster_count * p_boot_record->fat_copies * sizeof (unsigned int));
+	
+	int root_directory_offset = 0, data_cluster_offset = 0;
 
-	int root_directory_offset = 0,
-			data_cluster_offset = 0;
-	root_directory_offset += sizeof (struct boot_record);
-	//
-	root_directory_offset += p_boot_record->cluster_count * p_boot_record->fat_copies * sizeof (unsigned int);
-
-	//prectu root tolikrat polik je maximalni pocet zaznamu v bootu - root_directory_max_entries_count
+	// nacteni FAT
+	fread(tmp->fat_item, sizeof (unsigned int), p_boot_record->cluster_count * p_boot_record->fat_copies, p_file);
+	root_directory_offset = ftell(p_file);
+	
 	data_cluster_offset = root_directory_offset + p_boot_record->root_directory_max_entries_count * sizeof (struct root_directory);
 
 	printf("root_directory_offset :%d\n", root_directory_offset);
@@ -31,6 +31,7 @@ struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boo
 
 int delete_check_farmer(struct check_farmer* p_ch_f) {
 	printf("Deleting check_farmer\n");
+	free(p_ch_f->fat_item);
 	free(p_ch_f);
 	return 1;
 }
