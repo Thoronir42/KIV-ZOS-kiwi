@@ -20,7 +20,7 @@ struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boo
 
 	tmp->p_boot_record = p_boot_record;
 	tmp->file_system = p_file;
-	
+
 	tmp->root_directory_offset = root_directory_offset;
 	tmp->data_cluster_offset = data_cluster_offset;
 
@@ -38,7 +38,7 @@ int delete_check_farmer(struct check_farmer* p_ch_f) {
 struct check_worker* create_check_worker(struct check_farmer* p_ch_f) {
 	printf(" Creating check_worker\n");
 	struct check_worker* tmp = malloc(sizeof (struct check_worker));
-	
+
 	tmp->p_root_directory = (struct root_directory *) malloc(sizeof (struct root_directory));
 	tmp->ch_f = p_ch_f;
 	return tmp;
@@ -60,7 +60,7 @@ struct root_directory* check_farmer_load_next_file(struct check_farmer* ch_f, st
 
 	int file_offset = ch_f->root_directory_offset + cur_file * sizeof (struct root_directory);
 
-	fseek(ch_f->file_system, SEEK_SET, file_offset);
+	fseek(ch_f->file_system, file_offset, SEEK_SET);
 	fread(rd, sizeof (struct root_directory), 1, ch_f->file_system);
 	printf("FILE %d \n", cur_file);
 	printf("file_name :%s\n", rd->file_name);

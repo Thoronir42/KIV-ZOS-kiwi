@@ -163,7 +163,7 @@ int main_read() {
 
 	//otevru soubor a pro jistotu skocim na zacatek           
 	p_file = fopen("output.fat", "r");
-	fseek(p_file, SEEK_SET, 0);
+	fseek(p_file, 0, SEEK_SET);
 
 	//prectu boot
 	fread(p_boot_record, sizeof (struct boot_record), 1, p_file);
@@ -258,7 +258,7 @@ int main_checkFileLength(int threads) {
 
 	//otevru soubor a pro jistotu skocim na zacatek           
 	p_file = fopen("output.fat", "r");
-	fseek(p_file, SEEK_SET, 0);
+	fseek(p_file, 0, SEEK_SET);
 	
 	//init boot record
 	p_boot_record = (struct boot_record *) malloc(sizeof (struct boot_record));
@@ -269,10 +269,10 @@ int main_checkFileLength(int threads) {
 	for(i = 0; i < threads; i++){
 		p_check_worker[i] = create_check_worker(p_check_farmer);
 	}
-	printf("data_cluster_offset: %d\n", p_check_farmer->data_cluster_offset);
-	fseek(p_file, SEEK_SET, p_check_farmer->data_cluster_offset);
+	
 	char *p_cluster = malloc(sizeof (char) * p_boot_record->cluster_size);
-	for (i = 0; i < 10; i++) {
+	fseek(p_file, p_check_farmer->data_cluster_offset, SEEK_SET);
+	for (i = 0; i < p_boot_record->cluster_count; i++) {
 		fread(p_cluster, sizeof (char) * p_boot_record->cluster_size, 1, p_file);
 		//pokud je prazdny (tedy zacina 0, tak nevypisuj obsah)
 		if (p_cluster[0] != '\0')
