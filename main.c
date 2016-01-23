@@ -39,8 +39,8 @@ int process_parameters(int argc, char *argv[]) {
 		return 3;
 	}
 	threads = atoi(argv[1]);
-	if (threads < 1) {
-		printf("Number of threads parameter '%s' is not a number.\n", argv[1]);
+	if (threads < 1 || threads > 64) {
+		printf("Number of threads parameter '%s' is not a valid number. Please choose a number within <1, 64>\n", argv[1]);
 		return 4;
 	}
 
