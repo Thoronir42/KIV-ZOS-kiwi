@@ -12,14 +12,17 @@ struct check_farmer {
 	long int root_directory_offset;
 	long int data_cluster_offset;
 	
-	unsigned int **fat_item;
+	unsigned int *fat_item;
 	struct root_directory *p_root_directory[];
 };
 
 struct check_worker {
 	struct root_directory *p_root_directory;
 	struct check_farmer *ch_f;
-	int n;
+	int file_seq_num;
+	
+	char* p_cluster;
+	unsigned int next_cluster;
 };
 
 struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boot_record);
@@ -32,9 +35,9 @@ struct check_worker* create_check_worker(struct check_farmer* ch_f);
 int delete_check_worker(struct check_worker* p_c_f);
 
 
-struct root_directory* check_farmer_load_next_file(struct check_farmer* ch_f, struct root_directory* rd);
+int check_farmer_load_next_file(struct check_farmer* ch_f, struct root_directory* rd);
 
-struct root_directory* check_farmer_next_file(struct check_farmer*, struct check_worker*);
+int check_worker_run();
 
 
 #endif	/* LENGTH_CHECK_H */
