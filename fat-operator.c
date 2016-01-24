@@ -35,23 +35,23 @@ int main_write() {
 		fat[i] = FAT_UNUSED;
 	}
 
-	char cluster_a[WR_CLUSTER_SIZE];
+	char cluster_a1[WR_CLUSTER_SIZE];
 	char cluster_b1[WR_CLUSTER_SIZE];
 	char cluster_b2[WR_CLUSTER_SIZE];
 	char cluster_b3[WR_CLUSTER_SIZE];
 	char cluster_c1[WR_CLUSTER_SIZE];
 	char cluster_c2[WR_CLUSTER_SIZE];
-	char cluster_empty[WR_CLUSTER_SIZE];
+	char clus_emtpy[WR_CLUSTER_SIZE];
 
 	//priprava souboru
-	strcpy(cluster_empty, "");
-	memset(cluster_a, '\0', sizeof (cluster_a));
+	strcpy(clus_emtpy, "");
+	memset(cluster_a1, '\0', sizeof (cluster_a1));
 	memset(cluster_b1, '\0', sizeof (cluster_b1));
 	memset(cluster_b2, '\0', sizeof (cluster_b2));
 	memset(cluster_b3, '\0', sizeof (cluster_b3));
 	memset(cluster_c1, '\0', sizeof (cluster_c1));
 	memset(cluster_c2, '\0', sizeof (cluster_c2));
-	strcpy(cluster_a, "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789");
+	strcpy(cluster_a1, "0123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890123456789");
 	strcpy(cluster_b1, "Tohle je fakt dlouhy text, ktery je ulozen v souboru b.txt. Tento soubor zabira opravdu, ale opravdu velike mnozstvi mista, tak");
 	strcpy(cluster_b2, "ze v nasi virtualni FATce bude zabirat vice clusteru. Jak je videt v root directory, ma delku 300, takze zabira cele 3 clustery");
 	strcpy(cluster_b3, " a to 2,3,4. to je videt jasne z FAT......");
@@ -125,18 +125,18 @@ int main_write() {
 	fwrite(&root_b, sizeof (root_b), 1, fp);
 	fwrite(&root_c, sizeof (root_c), 1, fp);
 	// clustery - data
-	fwrite(&cluster_a, sizeof (cluster_a), 1, fp); //cluster 0
+	fwrite(&cluster_a1, sizeof (cluster_a1), 1, fp); //cluster 0
 	fwrite(&cluster_b1, sizeof (cluster_b1), 1, fp); //cluster 1
 	fwrite(&cluster_b2, sizeof (cluster_b2), 1, fp); //cluster 2
 	fwrite(&cluster_b3, sizeof (cluster_b3), 1, fp); //cluster 3
-	fwrite(&cluster_empty, sizeof (cluster_empty), 1, fp); //cluster 4
-	fwrite(&cluster_empty, sizeof (cluster_empty), 1, fp); //cluster 5
+	fwrite(&clus_emtpy, sizeof (clus_emtpy), 1, fp); //cluster 4
+	fwrite(&clus_emtpy, sizeof (clus_emtpy), 1, fp); //cluster 5
 	fwrite(&cluster_c1, sizeof (cluster_c1), 1, fp); //cluster 6
-	fwrite(&cluster_empty, sizeof (cluster_empty), 1, fp); //cluster 7
+	fwrite(&clus_emtpy, sizeof (clus_emtpy), 1, fp); //cluster 7
 	fwrite(&cluster_c2, sizeof (cluster_c2), 1, fp); //cluster 8
 	//vynuluj zbytek datovych bloku
 	for (int i = 9; i < 4076; i++)
-		fwrite(&cluster_empty, sizeof (cluster_empty), 1, fp);
+		fwrite(&clus_emtpy, sizeof (clus_emtpy), 1, fp);
 	fclose(fp);
 	return 0;
 
