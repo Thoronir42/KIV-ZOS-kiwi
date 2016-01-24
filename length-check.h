@@ -19,6 +19,8 @@ struct check_farmer {
 struct check_worker {
 	struct root_directory *p_root_directory;
 	struct check_farmer *ch_f;
+	
+	int worker_id;
 	int file_seq_num;
 	
 	char* p_cluster;
@@ -30,7 +32,7 @@ struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boo
 int delete_check_farmer(struct check_farmer* p_c_f);
 
 
-struct check_worker* create_check_worker(struct check_farmer* ch_f);
+struct check_worker* create_check_worker(struct check_farmer* ch_f, int w_id);
 
 int delete_check_worker(struct check_worker* p_c_f);
 

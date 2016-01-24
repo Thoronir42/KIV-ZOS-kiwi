@@ -267,18 +267,18 @@ int main_checkFileLength(int threads) {
 	// create farmer-workers
 	p_check_farmer = create_check_farmer(p_file, p_boot_record);
 	for(i = 0; i < threads; i++){
-		p_check_worker[i] = create_check_worker(p_check_farmer);
+		p_check_worker[i] = create_check_worker(p_check_farmer, i + 1);
 	}
 	
 	char *p_cluster = malloc(sizeof (char) * p_boot_record->cluster_size);
 	fseek(p_file, p_check_farmer->data_cluster_offset, SEEK_SET);
 	check_worker_run(p_check_worker[0]);
-	for (i = 0; i < p_boot_record->cluster_count; i++) {
+	/*for (i = 0; i < p_boot_record->cluster_count; i++) {
 		fread(p_cluster, sizeof (char) * p_boot_record->cluster_size, 1, p_file);
 		//pokud je prazdny (tedy zacina 0, tak nevypisuj obsah)
 		if (p_cluster[0] != '\0')
 			printf("Cluster %d:%s\n", i, p_cluster);
-	}
+	}*/
 
 	//uklid
 	for(i = 0; i < threads; i++){

@@ -42,13 +42,14 @@ int delete_check_farmer(struct check_farmer* p_ch_f) {
 	return 1;
 }
 
-struct check_worker* create_check_worker(struct check_farmer* p_ch_f) {
+struct check_worker* create_check_worker(struct check_farmer* p_ch_f, int w_id) {
 	printf(" Creating check_worker\n");
 	struct check_worker* tmp = malloc(sizeof (struct check_worker));
 
 	tmp->p_root_directory = (struct root_directory *) malloc(sizeof (struct root_directory));
 	tmp->p_cluster = malloc(sizeof (char) * p_ch_f->p_boot_record->cluster_size);
-
+	tmp->worker_id = w_id;
+	
 	tmp->ch_f = p_ch_f;
 	tmp->file_seq_num = 0;
 	return tmp;
@@ -92,22 +93,24 @@ int check_farmer_load_next_cluster(struct check_worker* p_ch_w, struct check_far
 }
 
 int check_worker_run(struct check_worker* p_ch_w) {
-	int cluster_number;
+	unsigned int next_cl,
+			total_length = 0,
+			cluster_length;
 	while (check_farmer_load_next_file(p_ch_w->ch_f, p_ch_w->p_root_directory)) {
 		p_ch_w->file_seq_num++;
-		printf("FILE %d \n", p_ch_w->file_seq_num);
-		printf("file_name :%s\n", p_ch_w->p_root_directory->file_name);
-		printf("file_mod  :%s\n", p_ch_w->p_root_directory->file_mod);
-		printf("file_type :%d\n", p_ch_w->p_root_directory->file_type);
-		printf("file_size :%d\n", p_ch_w->p_root_directory->file_size);
-		printf("1st_clstr :%d\n", p_ch_w->p_root_directory->first_cluster);
 
-		cluster_number = p_ch_w->next_cluster;
+		next_cl = p_ch_w->p_root_directory->first_cluster;
 		p_ch_w->next_cluster = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
 		do {
-			printf("cl %d\t %s\n", cluster_number, p_ch_w->p_cluster);
-			cluster_number = p_ch_w->next_cluster;
-		} while ((p_ch_w->next_cluster = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f)));
+			p_ch_w->next_cluster = next_cl;
+			next_cl = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
+			total_length += (cluster_length = strlen(p_ch_w->p_cluster));
+			//printf("cl %04d\t%d\t %s\n", p_ch_w->next_cluster, cluster_length, p_ch_w->p_cluster);
+			
+		} while (next_cl != FAT_BAD_CLUSTER && next_cl != FAT_FILE_END);
+		printf("(W%02d-F%03d): %16s %d / %d\n",
+				p_ch_w->worker_id, p_ch_w->file_seq_num,
+				p_ch_w->p_root_directory->file_name, p_ch_w->p_root_directory->file_size, total_length);
 	}
 
 	return 1;
