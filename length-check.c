@@ -38,6 +38,9 @@ struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boo
 int delete_check_farmer(struct check_farmer* p_ch_f) {
 	printf("Deleting check_farmer\n");
 	free(p_ch_f->fat_item);
+	free(p_ch_f->p_boot_record);
+	fclose(p_ch_f->file_system);
+
 	free(p_ch_f);
 	return 1;
 }

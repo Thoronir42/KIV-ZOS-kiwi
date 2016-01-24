@@ -287,10 +287,8 @@ int main_checkFileLength(int threads) {
 	delete_check_farmer(p_check_farmer);
 	
 	free(p_cluster);
-	free(p_boot_record);
-	fclose(p_file);
-
-
+	
+	
 	return 0;
 }
 
