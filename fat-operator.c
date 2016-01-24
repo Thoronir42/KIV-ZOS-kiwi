@@ -7,9 +7,9 @@
 #include "length-check.h"
 
 // definice na vyznam hodnot FAT tabulky
-const int FAT_UNUSED = 65535;
-const int FAT_FILE_END = 65534;
-const int FAT_BAD_CLUSTER = 65533;
+#define FAT_UNUSED 65535
+#define FAT_FILE_END 65534
+#define FAT_BAD_CLUSTER 65533
 
 // definice zapisovych konstant
 const int WR_FAT_COPIES = 2;
@@ -272,6 +272,7 @@ int main_checkFileLength(int threads) {
 	
 	char *p_cluster = malloc(sizeof (char) * p_boot_record->cluster_size);
 	fseek(p_file, p_check_farmer->data_cluster_offset, SEEK_SET);
+	check_worker_run(p_check_worker[0]);
 	for (i = 0; i < p_boot_record->cluster_count; i++) {
 		fread(p_cluster, sizeof (char) * p_boot_record->cluster_size, 1, p_file);
 		//pokud je prazdny (tedy zacina 0, tak nevypisuj obsah)
@@ -302,4 +303,3 @@ int main_moveClustersToStart(int threads) {
 
 	return 0;
 }
-

@@ -2,11 +2,17 @@
 
 #include "length-check.h"
 
+#ifndef FAT_UNUSED
+#define FAT_UNUSED 65535
+#define FAT_FILE_END 65534
+#define FAT_BAD_CLUSTER 65533
+#endif
+
 struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boot_record) {
 	printf("Creating check_farmer\n");
 	struct check_farmer* tmp = malloc(sizeof (struct check_farmer));
 	tmp->fat_item = malloc(p_boot_record->cluster_count * p_boot_record->fat_copies * sizeof (unsigned int));
-	
+
 	int root_directory_offset = 0, data_cluster_offset = 0;
 
 	// nacteni FAT
