@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <pthread.h>
 #include <unistd.h>
 #include <string.h>
 
@@ -25,7 +26,7 @@ int main_write() {
 	int clen = 140;
 	char a[alen];
 	char b[blen];
-	char c[blen];
+	char c[clen];
 	FILE *fp;
 	long rd_count;
 
@@ -64,7 +65,7 @@ int main_write() {
 	struct root_directory root_a;
 	memset(root_a.file_name, '\0', sizeof (root_a.file_name));
 	strcpy(root_a.file_name, "a.txt");
-	root_a.file_size = 100;
+	root_a.file_size = alen;
 	root_a.file_type = 1;
 	memset(root_a.file_mod, '\0', sizeof (root_a.file_mod));
 	strcpy(root_a.file_mod, "rwxrwxrwx");
@@ -77,7 +78,7 @@ int main_write() {
 	struct root_directory root_b;
 	memset(root_b.file_name, '\0', sizeof (root_b.file_name));
 	strcpy(root_b.file_name, "b.txt");
-	root_b.file_size = 300;
+	root_b.file_size = blen;
 	root_b.file_type = 1;
 	memset(root_b.file_mod, '\0', sizeof (root_b.file_mod));
 	strcpy(root_b.file_mod, "rwxrwxrwx");
@@ -91,7 +92,7 @@ int main_write() {
 	struct root_directory root_c;
 	memset(root_c.file_name, '\0', sizeof (root_c.file_name));
 	strcpy(root_c.file_name, "c.txt");
-	root_c.file_size = 140;
+	root_c.file_size = clen;
 	root_c.file_type = 1;
 	memset(root_c.file_mod, '\0', sizeof (root_c.file_mod));
 	strcpy(root_c.file_mod, "rwxrwxrwx");
@@ -135,7 +136,7 @@ int main_write() {
 	fwrite(&clus_emtpy, sizeof (clus_emtpy), 1, fp); //cluster 7
 	fwrite(&cluster_c2, sizeof (cluster_c2), 1, fp); //cluster 8
 	//vynuluj zbytek datovych bloku
-	for (int i = 9; i < 4076; i++)
+	for (i = 9; i < WR_MAX_CLUSTERS - WR_RES_CLUSTER_COUNT; i++)
 		fwrite(&clus_emtpy, sizeof (clus_emtpy), 1, fp);
 	fclose(fp);
 	return 0;
@@ -210,7 +211,7 @@ int main_read() {
 	printf("ROOT DIRECTORY \n");
 	printf("-------------------------------------------------------- \n");
 
-
+	
 	for (i = 0; i < p_boot_record->root_directory_max_entries_count; i++) {
 		fread(p_root_directory, sizeof (struct root_directory), 1, p_file);
 		printf("FILE %d \n", i);
