@@ -1,12 +1,15 @@
 #ifndef LENGTH_CHECK_H
 #define	LENGTH_CHECK_H
 
+#include <pthread.h>
+
 #include "fat-operator.h"
 
 struct check_farmer {
 	struct boot_record *p_boot_record;
 	FILE* file_system;
 	
+	pthread_mutex_t* file_lock;
 	int cur_file;
 
 	long int root_directory_offset;
@@ -39,7 +42,7 @@ int delete_check_worker(struct check_worker* p_c_f);
 
 int check_farmer_load_next_file(struct check_farmer* ch_f, struct root_directory* rd);
 
-int check_worker_run();
+void *check_worker_run();
 
 
 #endif	/* LENGTH_CHECK_H */

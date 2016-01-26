@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <pthread.h>
 
 #include "length-check.h"
 
@@ -9,10 +10,11 @@
 #endif
 
 struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boot_record) {
-	printf("Creating check_farmer\n");
 	struct check_farmer* tmp = malloc(sizeof (struct check_farmer));
 	tmp->fat_item = malloc(p_boot_record->cluster_count * p_boot_record->fat_copies * sizeof (unsigned int));
-
+	tmp->file_lock = malloc(sizeof (pthread_mutex_t));
+	pthread_mutex_init(tmp->file_lock, NULL);
+	
 	int root_directory_offset = 0, data_cluster_offset = 0;
 
 	// nacteni FAT
@@ -33,9 +35,10 @@ struct check_farmer* create_check_farmer(FILE* p_file, struct boot_record *p_boo
 }
 
 int delete_check_farmer(struct check_farmer* p_ch_f) {
-	printf("Deleting check_farmer\n");
 	free(p_ch_f->fat_item);
 	free(p_ch_f->p_boot_record);
+	pthread_mutex_destroy(p_ch_f->file_lock);
+	free(p_ch_f->file_lock);
 	fclose(p_ch_f->file_system);
 
 	free(p_ch_f);
@@ -43,20 +46,18 @@ int delete_check_farmer(struct check_farmer* p_ch_f) {
 }
 
 struct check_worker* create_check_worker(struct check_farmer* p_ch_f, int w_id) {
-	printf(" Creating check_worker\n");
 	struct check_worker* tmp = malloc(sizeof (struct check_worker));
 
 	tmp->p_root_directory = (struct root_directory *) malloc(sizeof (struct root_directory));
 	tmp->p_cluster = malloc(sizeof (char) * p_ch_f->p_boot_record->cluster_size);
 	tmp->worker_id = w_id;
-	
+
 	tmp->ch_f = p_ch_f;
 	tmp->file_seq_num = 0;
 	return tmp;
 }
 
 int delete_check_worker(struct check_worker* p_ch_w) {
-	printf(" Deleting check_worker\n");
 	free(p_ch_w->p_root_directory);
 	free(p_ch_w->p_cluster);
 	free(p_ch_w);
@@ -65,8 +66,10 @@ int delete_check_worker(struct check_worker* p_ch_w) {
 }
 
 int check_farmer_load_next_file(struct check_farmer* ch_f, struct root_directory* rd) {
+	pthread_mutex_lock(ch_f->file_lock);
 	int cur_file = ch_f->cur_file;
 	if (cur_file >= ch_f->p_boot_record->root_directory_max_entries_count) {
+		pthread_mutex_unlock(ch_f->file_lock);
 		return 0;
 	}
 
@@ -74,6 +77,8 @@ int check_farmer_load_next_file(struct check_farmer* ch_f, struct root_directory
 	ch_f->cur_file = cur_file + 1;
 	fseek(ch_f->file_system, file_offset, SEEK_SET);
 	fread(rd, sizeof (struct root_directory), 1, ch_f->file_system);
+	
+	pthread_mutex_unlock(ch_f->file_lock);
 	return 1;
 }
 
@@ -81,8 +86,11 @@ int check_farmer_load_next_file(struct check_farmer* ch_f, struct root_directory
 
 int check_farmer_load_next_cluster(struct check_worker* p_ch_w, struct check_farmer* p_ch_f) {
 	long cluster_offset = p_ch_f->data_cluster_offset + p_ch_w->next_cluster * sizeof (char) * p_ch_f->p_boot_record->cluster_size;
+	pthread_mutex_lock(p_ch_f->file_lock);
 	fseek(p_ch_f->file_system, cluster_offset, SEEK_SET);
 	fread(p_ch_w->p_cluster, sizeof (char) * p_ch_f->p_boot_record->cluster_size, 1, p_ch_f->file_system);
+	
+	pthread_mutex_unlock(p_ch_f->file_lock);
 	if (p_ch_w->next_cluster == FAT_BAD_CLUSTER || p_ch_w->next_cluster == FAT_FILE_END) {
 		return 0;
 	}
@@ -92,13 +100,16 @@ int check_farmer_load_next_cluster(struct check_worker* p_ch_w, struct check_far
 	return p_ch_f->fat_item[p_ch_w->next_cluster];
 }
 
-int check_worker_run(struct check_worker* p_ch_w) {
+void *check_worker_run(struct check_worker* p_ch_w) {
 	unsigned int next_cl,
-			total_length = 0,
+			total_length,
 			cluster_length;
+	//printf("Running worker %02d\n", p_ch_w->worker_id);
 	while (check_farmer_load_next_file(p_ch_w->ch_f, p_ch_w->p_root_directory)) {
 		p_ch_w->file_seq_num++;
-
+		total_length = 0;
+		
+		
 		next_cl = p_ch_w->p_root_directory->first_cluster;
 		p_ch_w->next_cluster = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
 		do {
@@ -111,7 +122,7 @@ int check_worker_run(struct check_worker* p_ch_w) {
 		printf("(W%02d-F%03d): %16s %d / %d\n",
 				p_ch_w->worker_id, p_ch_w->file_seq_num,
 				p_ch_w->p_root_directory->file_name, p_ch_w->p_root_directory->file_size, total_length);
+		sleep(1);
 	}
-
-	return 1;
+	//printf("Worker %02d don.\n", p_ch_w->worker_id);
 }

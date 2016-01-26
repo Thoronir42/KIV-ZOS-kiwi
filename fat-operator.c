@@ -253,6 +253,7 @@ int main_checkFileLength(int threads) {
 
 	struct check_farmer *p_check_farmer;
 	struct check_worker *p_check_worker[threads];
+	pthread_t p_threads[threads];
 
 	//pointery na struktury boot                         
 	struct boot_record *p_boot_record;
@@ -271,24 +272,20 @@ int main_checkFileLength(int threads) {
 		p_check_worker[i] = create_check_worker(p_check_farmer, i + 1);
 	}
 	
-	char *p_cluster = malloc(sizeof (char) * p_boot_record->cluster_size);
-	fseek(p_file, p_check_farmer->data_cluster_offset, SEEK_SET);
-	check_worker_run(p_check_worker[0]);
-	/*for (i = 0; i < p_boot_record->cluster_count; i++) {
-		fread(p_cluster, sizeof (char) * p_boot_record->cluster_size, 1, p_file);
-		//pokud je prazdny (tedy zacina 0, tak nevypisuj obsah)
-		if (p_cluster[0] != '\0')
-			printf("Cluster %d:%s\n", i, p_cluster);
-	}*/
+	for(i = 0; i < threads; i++){
+		pthread_create(&p_threads[i], NULL, check_worker_run, p_check_worker[i]);
+	}
 
 	//uklid
+	
+	for(i = 0; i < threads; i++){
+		pthread_join(p_threads[i], NULL);
+	}
+	
 	for(i = 0; i < threads; i++){
 		delete_check_worker(p_check_worker[i]);
 	}
-	delete_check_farmer(p_check_farmer);
-	
-	free(p_cluster);
-	
+	delete_check_farmer(p_check_farmer);	
 	
 	return 0;
 }
