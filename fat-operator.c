@@ -255,29 +255,22 @@ int main_checkFileLength(int threads) {
 	struct check_worker *p_check_worker[threads];
 	pthread_t p_threads[threads];
 
-	//pointery na struktury boot                         
-	struct boot_record *p_boot_record;
-
-	//otevru soubor a pro jistotu skocim na zacatek           
+	// otevru soubor a pro jistotu skocim na zacatek           
 	p_file = fopen("output.fat", "r");
 	fseek(p_file, 0, SEEK_SET);
 	
-	//init boot record
-	p_boot_record = (struct boot_record *) malloc(sizeof (struct boot_record));
-	fread(p_boot_record, sizeof (struct boot_record), 1, p_file);
-	
-	// create farmer-workers
-	p_check_farmer = create_check_farmer(p_file, p_boot_record);
+	// priprava farmer-worker struktur
+	p_check_farmer = create_check_farmer(p_file);
 	for(i = 0; i < threads; i++){
 		p_check_worker[i] = create_check_worker(p_check_farmer, i + 1);
 	}
 	
+	// spusteni vlaken
 	for(i = 0; i < threads; i++){
 		pthread_create(&p_threads[i], NULL, check_worker_run, p_check_worker[i]);
 	}
 
-	//uklid
-	
+	// ukonceni vlaken a uklid	
 	for(i = 0; i < threads; i++){
 		pthread_join(p_threads[i], NULL);
 	}
