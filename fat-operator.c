@@ -6,6 +6,7 @@
 
 #include "fat-operator.h"
 #include "length-check.h"
+#include "cluster-shake.h"
 
 // definice na vyznam hodnot FAT tabulky
 #define FAT_UNUSED 65535
@@ -287,8 +288,36 @@ int main_moveClustersToStart(int threads) {
 	if (threads < 1) {
 		return 1;
 	}
+	int i;
 
-	printf("Moving clusters");
+	struct check_farmer *p_check_farmer;
+	struct check_worker *p_check_worker[threads];
+	pthread_t p_threads[threads];
 
+	// otevru soubor a pro jistotu skocim na zacatek           
+	p_file = fopen("output.fat", "r");
+	fseek(p_file, 0, SEEK_SET);
+	
+	// priprava farmer-worker struktur
+	p_check_farmer = create_check_farmer(p_file);
+	for(i = 0; i < threads; i++){
+		p_check_worker[i] = create_check_worker(p_check_farmer, i + 1);
+	}
+	
+	// spusteni vlaken
+	for(i = 0; i < threads; i++){
+		pthread_create(&p_threads[i], NULL, check_worker_run, p_check_worker[i]);
+	}
+
+	// ukonceni vlaken a uklid	
+	for(i = 0; i < threads; i++){
+		pthread_join(p_threads[i], NULL);
+	}
+	
+	for(i = 0; i < threads; i++){
+		delete_check_worker(p_check_worker[i]);
+	}
+	delete_check_farmer(p_check_farmer);	
+	
 	return 0;
 }
