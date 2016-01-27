@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "fat-operator.h"
 
@@ -63,22 +64,35 @@ int print_help() {
 }
 
 int main(int argc, char *argv[]) {
+	int op_result;
 	if (process_parameters(argc - 1, argv + 1)) {
 		print_help();
 		return 1;
 	}
 
+	clock_t t_start, t_end;
+	float total_time;
+	
+	t_start = clock();
+	printf("%s\n", argv[1]);
 	switch (operation) {
 		case OP_DEF_WRITE:
-			return main_write();
+			op_result = main_write();
+			break;
 		case OP_DEF_READ:
-			return main_read();
+			op_result = main_read();
+			break;
 		case OP_MY_CHECK:
-			return main_checkFileLength(req_thread_count);
+			op_result = main_checkFileLength(req_thread_count);
+			break;
 		case OP_MY_SHAKE:
-			return main_moveClustersToStart(req_thread_count);
+			op_result = main_moveClustersToStart(req_thread_count);
+			break;
 	}
-	//main_read();
+	
+	t_end = clock();
+	total_time = ((float)(t_end - t_start) / CLOCKS_PER_SEC) * 1000;
+	printf("Job %s with %d threads took %.02f ms.\n", argv[1], req_thread_count, total_time);
 
-	return 0;
+	return op_result;
 }
