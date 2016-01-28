@@ -290,23 +290,23 @@ int main_moveClustersToStart(int threads) {
 	}
 	int i;
 
-	struct check_farmer *p_check_farmer;
-	struct check_worker *p_check_worker[threads];
+	struct shake_farmer *p_shake_farmer;
+	struct shake_worker *p_shake_worker[threads];
 	pthread_t p_threads[threads];
-
-	// otevru soubor a pro jistotu skocim na zacatek           
-	p_file = fopen("output.fat", "r");
-	fseek(p_file, 0, SEEK_SET);
+	
+	char file_system_path[30];
+	memset(file_system_path, '\0', sizeof (file_system_path));
+	strcpy(file_system_path, "output.fat");
 	
 	// priprava farmer-worker struktur
-	p_check_farmer = create_check_farmer(p_file);
+	p_shake_farmer = create_shake_farmer(file_system_path);
 	for(i = 0; i < threads; i++){
-		p_check_worker[i] = create_check_worker(p_check_farmer, i + 1);
+		p_shake_worker[i] = create_shake_worker(p_shake_farmer, i + 1);
 	}
 	
 	// spusteni vlaken
 	for(i = 0; i < threads; i++){
-		pthread_create(&p_threads[i], NULL, check_worker_run, p_check_worker[i]);
+		pthread_create(&p_threads[i], NULL, shake_worker_run, p_shake_worker[i]);
 	}
 
 	// ukonceni vlaken a uklid	
@@ -315,9 +315,9 @@ int main_moveClustersToStart(int threads) {
 	}
 	
 	for(i = 0; i < threads; i++){
-		delete_check_worker(p_check_worker[i]);
+		delete_shake_worker(p_shake_worker[i]);
 	}
-	delete_check_farmer(p_check_farmer);	
+	delete_shake_farmer(p_shake_farmer);	
 	
 	return 0;
 }

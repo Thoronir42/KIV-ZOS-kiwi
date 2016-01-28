@@ -6,35 +6,41 @@
 #include "fat-operator.h"
 // Struktura citajiciho farmare
 struct shake_farmer {
-	struct boot_record *p_boot_record;
+	char* FS_path;
 	FILE* file_system;
-	pthread_mutex_t* file_lock;
+	const int CLUSTER_CHUNK_SIZE;
 	
-	int cur_file;
-	pthread_mutex_t* file_count_lock;
-
-	long int root_directory_offset;
-	long int data_cluster_offset;
+	int cluster_chunk_current;
+	int cluster_chunks_total;
+	int* cluster_chunk_read_beginings;
+	pthread_mutex_t* lock_cluster_chunk;
 	
+	struct boot_record *p_boot_record;
 	unsigned int *fat_item;
-	struct root_directory *p_root_directory[];
+	struct root_directory *p_root_directory;
+	char *cluster_content[];
+
+	long int offset_fat;
+	long int offset_root_directory;
+	long int offset_data_cluster;
 };
 
 // Struktura citace delky souboru
 struct shake_worker {
-	struct root_directory *p_root_directory;
+	int worker_id;
+	
 	struct shake_farmer *s_f;
 	
-	int worker_id;
-	int file_seq_num;
+	FILE* file_system_operator;
 	
-	char* p_cluster;
-	unsigned int next_cluster;
+	int assigned_cluster_chunk;
+	int cluster_num;
 };
 
 
-struct shake_farmer* create_shake_farmer(FILE* p_file);
+int shake_analyze_fat(int* cl_ch_begs, unsigned int* fat);
 
+struct shake_farmer* create_shake_farmer(char* FS_path);
 
 int delete_shake_farmer(struct shake_farmer* p_s_f);
 
