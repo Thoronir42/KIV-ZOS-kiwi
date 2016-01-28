@@ -18,7 +18,7 @@ struct check_farmer* create_check_farmer(FILE* p_file) {
 	fread(tmp->p_boot_record, sizeof (struct boot_record), 1, p_file);
 	
 	// init other structures
-	tmp->fat_item = malloc(tmp->p_boot_record->cluster_count * tmp->p_boot_record->fat_copies * sizeof (unsigned int));
+	tmp->fat_item = malloc(tmp->p_boot_record->cluster_count * sizeof (unsigned int));
 	
 	tmp->file_lock = malloc(sizeof (pthread_mutex_t));
 	tmp->file_count_lock = malloc(sizeof (pthread_mutex_t));
@@ -26,7 +26,7 @@ struct check_farmer* create_check_farmer(FILE* p_file) {
 	pthread_mutex_init(tmp->file_count_lock, NULL);
 	
 	// nacteni FAT
-	fread(tmp->fat_item, sizeof (unsigned int), tmp->p_boot_record->cluster_count * tmp->p_boot_record->fat_copies, p_file);
+	fread(tmp->fat_item, sizeof (unsigned int), tmp->p_boot_record->cluster_count, p_file);
 	root_directory_offset = ftell(p_file);
 
 	data_cluster_offset = root_directory_offset + tmp->p_boot_record->root_directory_max_entries_count * sizeof (struct root_directory);
