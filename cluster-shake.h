@@ -38,7 +38,7 @@ struct shake_worker {
 };
 
 
-int shake_analyze_fat(int* cl_ch_begs, unsigned int* fat);
+int shake_analyze_fat(shake_farmer *p_s_f);
 
 struct shake_farmer* create_shake_farmer(char* FS_path);
 
