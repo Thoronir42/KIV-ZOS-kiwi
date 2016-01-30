@@ -10,23 +10,26 @@
 #endif
 
 struct check_farmer* create_check_farmer(FILE* p_file) {
-	int root_directory_offset = 0, data_cluster_offset = 0;
+	int root_directory_offset = 0, data_cluster_offset = 0,
+			i;
 	struct check_farmer* tmp = malloc(sizeof (struct check_farmer));
-	
+
 	// init boot record
-	tmp->p_boot_record = malloc(sizeof(struct boot_record));
+	tmp->p_boot_record = malloc(sizeof (struct boot_record));
 	fread(tmp->p_boot_record, sizeof (struct boot_record), 1, p_file);
-	
+
 	// init other structures
 	tmp->fat_item = malloc(tmp->p_boot_record->cluster_count * sizeof (unsigned int));
-	
+
 	tmp->file_lock = malloc(sizeof (pthread_mutex_t));
 	tmp->file_count_lock = malloc(sizeof (pthread_mutex_t));
 	pthread_mutex_init(tmp->file_lock, NULL);
 	pthread_mutex_init(tmp->file_count_lock, NULL);
-	
+
 	// nacteni FAT
-	fread(tmp->fat_item, sizeof (unsigned int), tmp->p_boot_record->cluster_count, p_file);
+	for (i = 0; i < tmp->p_boot_record->fat_copies; i++) {
+		fread(tmp->fat_item, sizeof (unsigned int), tmp->p_boot_record->cluster_count, p_file);
+	}
 	root_directory_offset = ftell(p_file);
 
 	data_cluster_offset = root_directory_offset + tmp->p_boot_record->root_directory_max_entries_count * sizeof (struct root_directory);
@@ -83,12 +86,12 @@ int check_farmer_load_next_file(struct check_farmer* ch_f, struct root_directory
 	}
 	ch_f->cur_file = cur_file + 1;
 	pthread_mutex_unlock(ch_f->file_count_lock);
-	
+
 	pthread_mutex_lock(ch_f->file_lock);
 	int file_offset = ch_f->root_directory_offset + cur_file * sizeof (struct root_directory);
 	fseek(ch_f->file_system, file_offset, SEEK_SET);
 	fread(rd, sizeof (struct root_directory), 1, ch_f->file_system);
-	
+
 	pthread_mutex_unlock(ch_f->file_lock);
 	return 1;
 }
@@ -98,7 +101,7 @@ int check_farmer_load_next_cluster(struct check_worker* p_ch_w, struct check_far
 	pthread_mutex_lock(p_ch_f->file_lock);
 	fseek(p_ch_f->file_system, cluster_offset, SEEK_SET);
 	fread(p_ch_w->p_cluster, sizeof (char) * p_ch_f->p_boot_record->cluster_size, 1, p_ch_f->file_system);
-	
+
 	pthread_mutex_unlock(p_ch_f->file_lock);
 	if (p_ch_w->next_cluster == FAT_BAD_CLUSTER || p_ch_w->next_cluster == FAT_FILE_END) {
 		return 0;
@@ -117,8 +120,8 @@ void *check_worker_run(struct check_worker* p_ch_w) {
 	while (check_farmer_load_next_file(p_ch_w->ch_f, p_ch_w->p_root_directory)) {
 		p_ch_w->file_seq_num++;
 		total_length = 0;
-		
-		
+
+
 		next_cl = p_ch_w->p_root_directory->first_cluster;
 		p_ch_w->next_cluster = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
 		do {
@@ -126,7 +129,7 @@ void *check_worker_run(struct check_worker* p_ch_w) {
 			next_cl = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
 			total_length += (cluster_length = strlen(p_ch_w->p_cluster));
 			//printf("cl %04d\t%d\t %s\n", p_ch_w->next_cluster, cluster_length, p_ch_w->p_cluster);
-			
+
 		} while (next_cl != FAT_BAD_CLUSTER && next_cl != FAT_FILE_END);
 		printf("(W%02d-F%03d): %16s => c: %d / e: %d \n",
 				p_ch_w->worker_id, p_ch_w->file_seq_num,
