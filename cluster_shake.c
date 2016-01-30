@@ -9,15 +9,18 @@
 #define FAT_BAD_CLUSTER 65533
 #endif
 
+const int CL_CHUNK_SIZE = 3;
 const int NO_SHAKE_JOB = -1;
 
-int shake_analyze_fat(shake_farmer *p_s_f) {
+int shake_analyze_fat(struct shake_farmer *p_s_f) {
 	int i;
-	int bi;
+	int bi = 0;
 	int non_empty = 0;
 	int bad_clusters = 0;
 	int fat_item;
 
+	printf("FAT analyzation starting\n");
+	
 	for (i = 0; i < p_s_f->p_boot_record->cluster_count; i++) {
 		fat_item = p_s_f->fat_item[i];
 		if (fat_item == FAT_UNUSED) {
@@ -27,6 +30,7 @@ int shake_analyze_fat(shake_farmer *p_s_f) {
 			bad_clusters++;
 		}
 		if ((non_empty++ % p_s_f->CLUSTER_CHUNK_SIZE) == 0) {
+			printf("Chunk %02d set to %04d\n", bi, i);
 			p_s_f->cluster_chunk_read_beginings[bi++] = i;
 		}
 	}
@@ -37,7 +41,8 @@ int shake_analyze_fat(shake_farmer *p_s_f) {
 
 struct shake_farmer *create_shake_farmer(char* FS_path) {
 	struct shake_farmer* tmp = malloc(sizeof (struct shake_farmer));
-
+	FILE* p_file;
+	
 	// otevru soubor a pro jistotu skocim na zacatek           
 	p_file = fopen(FS_path, "r");
 	fseek(p_file, 0, SEEK_SET);
@@ -65,10 +70,11 @@ struct shake_farmer *create_shake_farmer(char* FS_path) {
 
 	// inicializace a nacteni datovych clusteru
 	tmp->offset_data_cluster = ftell(tmp->file_system);
-	fread(tmp->cluster_content, tmp->p_boot_record->cluster_size, tmp->p_boot_record->cluster_count, tmp->file_system);
+	tmp->cluster_content = malloc(sizeof(char) * tmp->p_boot_record->cluster_size * tmp->p_boot_record->cluster_count);
+	fread(tmp->cluster_content, sizeof(char) * tmp->p_boot_record->cluster_size, tmp->p_boot_record->cluster_count, tmp->file_system);
 
 	// inicializace promennych
-	tmp->CLUSTER_CHUNK_SIZE = 20;
+	tmp->CLUSTER_CHUNK_SIZE = CL_CHUNK_SIZE;
 	tmp->cluster_chunk_current = 0;
 	tmp->cluster_chunks_total = tmp->p_boot_record->cluster_count / tmp->CLUSTER_CHUNK_SIZE;
 	tmp->cluster_chunk_read_beginings = malloc(sizeof (int) * tmp->cluster_chunks_total);
@@ -94,12 +100,12 @@ int delete_shake_farmer(struct shake_farmer *p_s_f) {
 
 struct shake_worker *create_shake_worker(struct shake_farmer *p_s_f, int w_id) {
 	struct shake_worker* tmp = malloc(sizeof (struct shake_worker));
-
+	
 	tmp->s_f = p_s_f;
 	tmp->worker_id = w_id;
 
 	tmp->file_system_operator = fopen(p_s_f->FS_path, "r+");
-
+	
 	return tmp;
 }
 
@@ -122,5 +128,5 @@ int shake_next_cluster_chunk(struct shake_worker* p_s_w, struct shake_farmer * p
 }
 
 void *shake_worker_run(struct shake_worker * p_s_w) {
-
+	printf("Running shake worker %02d\n", p_s_w->worker_id);
 }

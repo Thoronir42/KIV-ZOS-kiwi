@@ -8,7 +8,7 @@
 struct shake_farmer {
 	char* FS_path;
 	FILE* file_system;
-	const int CLUSTER_CHUNK_SIZE;
+	int CLUSTER_CHUNK_SIZE;
 	
 	int cluster_chunk_current;
 	int cluster_chunks_total;
@@ -18,7 +18,7 @@ struct shake_farmer {
 	struct boot_record *p_boot_record;
 	unsigned int *fat_item;
 	struct root_directory *p_root_directory;
-	char *cluster_content[];
+	char *cluster_content;
 
 	long int offset_fat;
 	long int offset_root_directory;
@@ -38,7 +38,7 @@ struct shake_worker {
 };
 
 
-int shake_analyze_fat(shake_farmer *p_s_f);
+int shake_analyze_fat(struct shake_farmer *p_s_f);
 
 struct shake_farmer* create_shake_farmer(char* FS_path);
 
@@ -57,7 +57,7 @@ int shake_farmer_load_next_file(struct shake_farmer* s_f, struct root_directory*
 int shake_farmer_load_next_cluster(struct shake_worker* p_s_w, struct shake_farmer* p_s_f);
 
 
-void *shake_worker_run(struct shake_worker* p_s_w);
+void *shake_worker_run();
 
 
 #endif	/* CLUSTER_SHAKE */
