@@ -14,25 +14,26 @@ int req_thread_count;
 
 int process_parameters(int argc, char *argv[]) {
 	int threads;
-	if (argc > 0 && !strcmp("help", argv[0])) {
-		return 1;
-	}
 	if (argc < 2) {
+		if (argc > 0) {
+			if (!strcmp("write", argv[0])) {
+				operation = OP_DEF_WRITE;
+				return 0;
+			} else if (!strcmp("read", argv[0])) {
+				operation = OP_DEF_READ;
+				return 0;
+			} else if (!strcmp("help", argv[0])) {
+				return 1;
+			}
+		}
 		printf("Not enough paramaters\n");
 		return 2;
 	}
 
 	operation = -1;
-	if (!strcmp(argv[0], "write")) {
-		operation = OP_DEF_WRITE;
-	}
-	if (!strcmp(argv[0], "read")) {
-		operation = OP_DEF_READ;
-	}
 	if (!strcmp(argv[0], "check")) {
 		operation = OP_MY_CHECK;
-	}
-	if (!strcmp(argv[0], "shake")) {
+	} else if (!strcmp(argv[0], "shake")) {
 		operation = OP_MY_SHAKE;
 	}
 	if (operation == -1) {
@@ -72,9 +73,9 @@ int main(int argc, char *argv[]) {
 
 	clock_t t_start, t_end;
 	float total_time;
-	
+
 	t_start = clock();
-	printf("%s\n", argv[1]);
+	printf("Starting operation %s\n", argv[1]);
 	switch (operation) {
 		case OP_DEF_WRITE:
 			op_result = main_write();
@@ -89,9 +90,9 @@ int main(int argc, char *argv[]) {
 			op_result = main_moveClustersToStart(req_thread_count);
 			break;
 	}
-	
+
 	t_end = clock();
-	total_time = ((float)(t_end - t_start) / CLOCKS_PER_SEC) * 1000;
+	total_time = ((float) (t_end - t_start) / CLOCKS_PER_SEC) * 1000;
 	printf("Job %s with %d threads took %.02f ms.\n", argv[1], req_thread_count, total_time);
 
 	return op_result;
