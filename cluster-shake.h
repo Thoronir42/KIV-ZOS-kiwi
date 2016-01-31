@@ -11,7 +11,7 @@ struct shake_farmer {
 	int CLUSTER_CHUNK_SIZE;
 	
 	int cluster_chunk_current;
-	int cluster_chunks_total;
+	int cluster_chunks_not_empty;
 	int* cluster_chunk_read_beginings;
 	pthread_mutex_t* lock_cluster_chunk;
 	
@@ -39,6 +39,8 @@ struct shake_worker {
 
 
 int shake_analyze_fat(struct shake_farmer *p_s_f);
+
+int write_shaken_headder(struct shake_farmer *p_s_f, char *file_name);
 
 struct shake_farmer* create_shake_farmer(char* FS_path);
 
