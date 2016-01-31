@@ -6,9 +6,10 @@
 #include "fat-operator.h"
 // Struktura citajiciho farmare
 struct shake_farmer {
+	const int CLUSTER_CHUNK_SIZE;
+	
 	char* FS_path;
 	FILE* file_system;
-	int CLUSTER_CHUNK_SIZE;
 	
 	int cluster_chunk_current;
 	int cluster_chunks_not_empty;

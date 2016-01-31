@@ -91,9 +91,11 @@ struct shake_farmer *create_shake_farmer(char* FS_path) {
 	fread(tmp->cluster_content, sizeof (char) * tmp->p_boot_record->cluster_size, tmp->p_boot_record->cluster_count, tmp->file_system);
 
 	// inicializace promennych
-	tmp->CLUSTER_CHUNK_SIZE = CL_CHUNK_SIZE;
+	*(int *) &tmp->CLUSTER_CHUNK_SIZE = CL_CHUNK_SIZE;
+
 	tmp->cluster_chunk_read_beginings = malloc(sizeof (int) * (tmp->p_boot_record->cluster_count / tmp->CLUSTER_CHUNK_SIZE));
 	tmp->cluster_chunk_current = 0;
+
 
 	write_shaken_headder(tmp, "shaken.fat");
 
