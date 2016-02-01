@@ -19,7 +19,7 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 	int bad_clusters = 0;
 	int fat_item;
 
-	printf("FAT analyzation starting\n");
+	printf("FAT analyzation starting with chunk size %d\n", p_s_f->CLUSTER_CHUNK_SIZE);
 
 	for (i = 0; i < p_s_f->p_boot_record->cluster_count; i++) {
 		fat_item = p_s_f->fat_item[i];
@@ -37,10 +37,16 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 	}
 	p_s_f->cluster_chunk_read_beginings[++bi] = NO_SHAKE_JOB;
 	p_s_f->cluster_chunks_not_empty = (non_empty / p_s_f->CLUSTER_CHUNK_SIZE);
-	if(non_empty % p_s_f->CLUSTER_CHUNK_SIZE){
+	if (non_empty % p_s_f->CLUSTER_CHUNK_SIZE) {
 		p_s_f->cluster_chunks_not_empty++;
+		p_s_f->cluster_chunk_last_size = non_empty % p_s_f->CLUSTER_CHUNK_SIZE;
+	} else {
+		p_s_f->cluster_chunk_last_size = p_s_f->CLUSTER_CHUNK_SIZE;
 	}
+
 	printf("Non empty clusters: %04d, bad clusters: %02d\n", non_empty, bad_clusters);
+	printf("Last chunk: %02d\tLast chunk size: %d\n\n",
+			p_s_f->cluster_chunks_not_empty, p_s_f->cluster_chunk_last_size);
 	return 0;
 
 }
@@ -153,30 +159,35 @@ int shake_next_cluster_chunk(struct shake_worker* p_s_w, struct shake_farmer * p
 }
 
 void *shake_worker_run(struct shake_worker * p_s_w) {
-	printf("Running shake worker %02d\n", p_s_w->worker_id);
-
-	int put_index, search_index, search_item;
 	struct shake_farmer *p_s_f = p_s_w->s_f;
+	int put_index, search_index, search_item;
+	int chunk_offset, search_chunk_start;
 
+	printf("Running shake worker %02d with chunk size %d\n", p_s_w->worker_id, p_s_f->CLUSTER_CHUNK_SIZE);
+	
 	while (shake_next_cluster_chunk(p_s_w, p_s_w->s_f)) { // Dokud jsou nepřesunuté chunky
 		if (p_s_w->assigned_cluster_chunk == NO_SHAKE_JOB) {
 			break;
 		}
-
-		search_index = 0;
+		chunk_offset = p_s_w->assigned_cluster_chunk * p_s_f->CLUSTER_CHUNK_SIZE;
+		search_chunk_start = p_s_f->cluster_chunk_read_beginings[p_s_w->assigned_cluster_chunk];
+		search_index = -1;
 		for (put_index = 0; put_index < p_s_f->CLUSTER_CHUNK_SIZE; put_index++) { // přesouvej nalezené clustery
-			search_item = p_s_f->fat_item[p_s_w->assigned_cluster_chunk * p_s_f->CLUSTER_CHUNK_SIZE + search_index];
+			search_index++;
+			search_item = p_s_f->fat_item[chunk_offset + search_index];
 			while (search_item == FAT_BAD_CLUSTER || search_item == FAT_UNUSED) { // hledej neprázdné clustery
 				search_index++;
-				search_item = p_s_f->fat_item[p_s_w->assigned_cluster_chunk * p_s_f->CLUSTER_CHUNK_SIZE + search_index];
+				search_item = p_s_f->fat_item[chunk_offset + search_index];
 			}
-			search_index++;
 			printf("(W%02d-CH%02d): B = %04d\tP = %d[%04d]: %05d \n",
 					p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
 					p_s_f->cluster_chunk_read_beginings[p_s_w->assigned_cluster_chunk],
-					p_s_w->assigned_cluster_chunk * p_s_f->CLUSTER_CHUNK_SIZE + put_index,
-					search_index, search_item);
-			
+					chunk_offset + put_index,
+					search_chunk_start + search_index, search_item);
+			if (p_s_w->assigned_cluster_chunk == p_s_f->cluster_chunks_not_empty - 1 && put_index == p_s_f->cluster_chunk_last_size - 1) {
+				printf("Last chunk, last cluster.\n");
+				break;
+			}
 		}
 	}
 }
