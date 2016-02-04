@@ -15,10 +15,12 @@ struct shake_farmer {
 	int cluster_chunks_not_empty;
 	int cluster_chunk_last_size;
 	int* cluster_chunk_read_beginings;
-	pthread_mutex_t* lock_cluster_chunk;
+	int* cluster_chunk_read_ends;
+	pthread_mutex_t* lock_cluster_chunk_counter;
 	
 	struct boot_record *p_boot_record;
-	unsigned int *fat_item;
+	unsigned int *FAT;
+	unsigned int *FAT_rev;
 	struct root_directory *p_root_directory;
 	
 	char *cluster_content;
