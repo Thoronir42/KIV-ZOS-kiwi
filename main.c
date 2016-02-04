@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 #include <time.h>
 
 #include "fat-operator.h"
@@ -11,30 +12,41 @@
 
 int operation;
 int req_thread_count;
+char *read_src;
 
 int process_parameters(int argc, char *argv[]) {
+	read_src = NULL;
+	operation = -1;
 	int threads;
-	if (argc < 2) {
-		if (argc > 0) {
-			if (!strcmp("write", argv[0])) {
-				operation = OP_DEF_WRITE;
-				return 0;
-			} else if (!strcmp("read", argv[0])) {
-				operation = OP_DEF_READ;
-				return 0;
-			} else if (!strcmp("help", argv[0])) {
-				return 1;
-			}
-		}
+	if (argc < 1) {
 		printf("Not enough paramaters\n");
 		return 2;
+
+	} else if (!strcmp("write", argv[0])) {
+		operation = OP_DEF_WRITE;
+		return 0;
+
+	} else if (!strcmp("read", argv[0])) {
+		if (argc == 2) {
+			read_src = argv[1];
+		}
+		operation = OP_DEF_READ;
+		return 0;
+
+	} else if (!strcmp("help", argv[0])) {
+		return 1;
 	}
 
-	operation = -1;
-	if (!strcmp(argv[0], "check")) {
+	if (argc < 2) {
+		printf("Not enough paramaters\n");
+		return 2;
+
+	} else if (!strcmp(argv[0], "check")) {
 		operation = OP_MY_CHECK;
+		
 	} else if (!strcmp(argv[0], "shake")) {
 		operation = OP_MY_SHAKE;
+		
 	}
 	if (operation == -1) {
 		printf("First argument representing operation (%s) was not recognised", argv[0]);
