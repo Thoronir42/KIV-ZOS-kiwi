@@ -168,7 +168,6 @@ int delete_shake_worker(struct shake_worker *p_s_w) {
 
 int shake_next_cluster_chunk(struct shake_worker* p_s_w, struct shake_farmer * p_s_f) {
 	if (p_s_f->cluster_chunk_current >= p_s_f->cluster_chunks_not_empty) {
-		p_s_w->assigned_cluster_chunk = NO_SHAKE_JOB;
 		return 0;
 	}
 	pthread_mutex_lock(p_s_f->lock_cluster_chunk_counter);
@@ -186,10 +185,6 @@ void *shake_worker_run(struct shake_worker * p_s_w) {
 	printf("Running shake worker %02d with chunk size %d\n", p_s_w->worker_id, p_s_f->CLUSTER_CHUNK_SIZE);
 
 	while (shake_next_cluster_chunk(p_s_w, p_s_w->s_f)) { // Dokud jsou nepřesunuté chunky
-		if (p_s_w->assigned_cluster_chunk == NO_SHAKE_JOB) {
-			break;
-		}
-
 		/*printf("(W%02d-CH%02d) got chunk: <%04d, %04d>\n",
 				p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
 				p_s_f->cluster_chunk_read_beginings[p_s_w->assigned_cluster_chunk],
