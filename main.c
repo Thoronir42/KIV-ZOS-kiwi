@@ -38,7 +38,7 @@ int process_parameters(int argc, char *argv[]) {
 	}
 
 	if (argc < 2) {
-		printf("Not enough paramaters\n");
+		printf("Not enough paramaters for %s action\n", argv[0]);
 		return 2;
 
 	} else if (!strcmp(argv[0], "check")) {

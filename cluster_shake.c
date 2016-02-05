@@ -34,7 +34,7 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 		cluster_last_non_empty = i;
 
 		mod = non_empty++ % p_s_f->CLUSTER_CHUNK_SIZE;
-		if ((mod) == 0) {
+		if (mod == 0) {
 			printf("cl_ch_start on %04d\n", cluster_last_non_empty);
 			p_s_f->cluster_chunk_read_beginings[cl_ch_i] = cluster_last_non_empty;
 		} else if (mod == chunk_last_index) {
