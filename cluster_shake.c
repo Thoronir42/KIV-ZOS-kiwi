@@ -177,47 +177,54 @@ int shake_next_cluster_chunk(struct shake_worker* p_s_w, struct shake_farmer * p
 	return 1;
 }
 
+int shake_worker_search_fat(struct shake_worker *p_s_w, struct shake_farmer *p_s_f) {
+	p_s_w->search_item = p_s_f->FAT[p_s_w->search_chunk_start + ++(p_s_w->search_index)];
+	while (p_s_w->search_item == FAT_BAD_CLUSTER || p_s_w->search_item == FAT_UNUSED) { // hledej neprázdné clustery
+		// overeni ze se prohledava spravny cluster chunk
+		if (p_s_w->search_index > p_s_w->search_chunk_end) {
+			return 0;
+		}
+		// dalsi polozka FAT
+		p_s_w->search_item = p_s_f->FAT[p_s_w->search_chunk_start + ++(p_s_w->search_index)];
+	}
+	return 1;
+}
+
 void *shake_worker_run(struct shake_worker * p_s_w) {
 	struct shake_farmer *p_s_f = p_s_w->s_f;
-	int put_index, search_index, search_item;
-	int chunk_offset, search_chunk_start, search_chunk_end;
+	int put_index;
 
 	printf("Running shake worker %02d with chunk size %d\n", p_s_w->worker_id, p_s_f->CLUSTER_CHUNK_SIZE);
 
 	while (shake_next_cluster_chunk(p_s_w, p_s_w->s_f)) { // Dokud jsou nepřesunuté chunky
+		p_s_w->chunk_put_offset = p_s_w->assigned_cluster_chunk * p_s_f->CLUSTER_CHUNK_SIZE;
+		p_s_w->search_chunk_start = p_s_f->cluster_chunk_read_beginings[p_s_w->assigned_cluster_chunk];
+		p_s_w->search_chunk_end = p_s_f->cluster_chunk_read_ends[p_s_w->assigned_cluster_chunk];
+		
 		/*printf("(W%02d-CH%02d) got chunk: <%04d, %04d>\n",
 				p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
-				p_s_f->cluster_chunk_read_beginings[p_s_w->assigned_cluster_chunk],
-				p_s_f->cluster_chunk_read_ends[p_s_w->assigned_cluster_chunk]);*/
+				p_s_w->search_chunk_start, p_s_w->search_chunk_end);*/
 
-		chunk_offset = p_s_w->assigned_cluster_chunk * p_s_f->CLUSTER_CHUNK_SIZE;
-		search_chunk_start = p_s_f->cluster_chunk_read_beginings[p_s_w->assigned_cluster_chunk];
-		search_chunk_end = p_s_f->cluster_chunk_read_ends[p_s_w->assigned_cluster_chunk];
-		search_index = 0;
+		p_s_w->search_index = -1;
 		for (put_index = 0; put_index < p_s_f->CLUSTER_CHUNK_SIZE; put_index++) { // přesouvej nalezené clustery
-			if (p_s_w->assigned_cluster_chunk == p_s_f->cluster_chunks_not_empty - 1 && put_index >= p_s_f->cluster_chunk_last_size ) {
+			if (p_s_w->assigned_cluster_chunk == p_s_f->cluster_chunks_not_empty - 1 && put_index >= p_s_f->cluster_chunk_last_size) {
 				printf("Last chunk, last cluster.\n");
 				break;
 			}
-			
+
 			// prohledani FAT podle cluster chunku
-			search_item = p_s_f->FAT[search_chunk_start + search_index];
-			while (search_item == FAT_BAD_CLUSTER || search_item == FAT_UNUSED) { // hledej neprázdné clustery
-				// overeni ze se prohledava spravny cluster chunk
-				if (search_index > search_chunk_end) {
-					printf("(W%02d-CH%02d): SI = %04d exceeded SCE = %04d\n",
-							p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
-							search_index, p_s_f->cluster_chunk_read_ends[p_s_w->assigned_cluster_chunk]);
-					break;
-				}
-				// dalsi polozka FAT
-				search_item = p_s_f->FAT[search_chunk_start + ++search_index];
+			if (!shake_worker_search_fat(p_s_w, p_s_f)) {
+				printf("(W%02d-CH%02d): SI = %04d exceeded SCE = %04d\n",
+						p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
+						p_s_w->search_index, p_s_w->search_chunk_end);
+				break;
 			}
-			printf("(W%02d-CH%02d): B = %04d\tP = %d[%04d+%d]: %05d \n",
+
+
+			printf("(W%02d-CH%02d): P = %d[%04d+%d]: %05d \n",
 					p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
-					p_s_f->cluster_chunk_read_beginings[p_s_w->assigned_cluster_chunk],
-					chunk_offset + put_index,
-					search_chunk_start, search_index, search_item);
+					p_s_w->chunk_put_offset + put_index,
+					p_s_w->search_chunk_start, p_s_w->search_index, p_s_w->search_item);
 
 
 		}

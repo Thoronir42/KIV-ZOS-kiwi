@@ -39,7 +39,13 @@ struct shake_worker {
 	FILE* file_system_operator;
 	
 	int assigned_cluster_chunk;
-	int cluster_num;
+	int search_chunk_start;
+	int search_chunk_end;
+	
+	int search_index;
+	unsigned int search_item;
+	
+	int chunk_put_offset;
 };
 
 
