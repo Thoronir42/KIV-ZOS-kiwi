@@ -1,0 +1,106 @@
+\documentclass[12pt,a4paper]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[czech]{babel}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{titlesec}
+\usepackage[left=2cm,right=2cm,top=2cm,bottom=2cm]{geometry}
+\usepackage{indentfirst}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{hyperref}
+
+%Pravidlo pro řádkování
+\renewcommand{\baselinestretch}{1.5}
+
+%Pravidlo pro začínání kapitol na novém řádku
+\let\oldsection\section
+\renewcommand\section{\clearpage\oldsection}
+
+%Formáty písem pro nadpisy (-změněno na bezpatkové \sffamily z původního \normalfont
+\titleformat{\section}
+{\sffamily\Large\bfseries}{\thesection}{1em}{}
+\titleformat{\subsection}
+{\sffamily\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}
+{\sffamily\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+%Nastavení zvýrazňování kódu v \lslisting
+\definecolor{mygreen}{rgb}{0,0.6,0}
+\definecolor{mygray}{rgb}{0.5,0.5,0.5}
+\lstset{commentstyle=\color{mygreen},keywordstyle=\color{blue},numberstyle=\tiny\color{mygray}}
+
+\author{Jan Šmejkal}
+
+\begin{document}
+
+%-------------Úvodni strana---------------
+\begin{titlepage}
+
+\includegraphics[width=50mm]{img/FAV.jpg}
+\\[160 pt]
+\centerline{ \Huge \sc KIV/ZOS - Základy operačních systémů}
+\centerline{ \huge \sc Semestrální práce }
+\\[12 pt]
+{\large \sc
+\centerline{Zadání pro login kiwi}
+}
+
+
+{
+\vfill 
+\parindent=0cm
+\textbf{Jméno:} Štěpán Ševčík\\
+\textbf{Osobní číslo:} A13B0443P\\
+\textbf{E-mail:} kiwi@students.zcu.cz\\
+\textbf{Datum:} {\large \today\par} %datum
+\textbf{www:} \url{https://logickehry.zcu.cz/}
+
+}
+
+\end{titlepage}
+
+%------------------------------------------
+
+%------------------Obsah-------------------
+\newpage
+\setcounter{page}{2}
+\setcounter{tocdepth}{3}
+\tableofcontents
+%------------------------------------------
+
+%--------------Text dokumentu--------------
+\section{Zadání}
+\subsection{1. část zadání}
+Kontrola, zda každý řetěz FAT má správnou délku (odpovídá velikosti souboru v adresáři)
+\subsection{2. část zadání}
+Setřesení volného místa (volné místo na konci, ale bloky souborů nemusí jít za sebou).
+\subsection{Další požadavky na aplikaci}
+\begin{description}
+\item Program vytvoří více vláken s možností zadat při/po spuštění počet paralelních entit
+\item Zdrojový kód programu bude komentovaný - např. co dělá každá funkce
+\item Bude ošetřeno špatné zadání vstupů
+\item Součástí řešení bude skript v bashi, který umožní automatické spuštění všech testů nutných k vytvoření dokumentace (tj. např. spuštění s různým počtem vláken)
+\item Dokumentace v elektronické podobě, popisující zejména použité konstrukce pro vytváření procesů/vláken/synchronizaci a použité algoritmy
+\item
+\end{description}
+
+\section{Rozbor řešení úlohy}
+\subsection{Spouštěč úlohy}
+Aplikace obsahuje čtyři rutiny, mezi kterými lze vybírat požadovanou pomocí spouštěcích argumentů. Dvě rutiny jsou optimalizované verze zadaných rutin \textit{fat\_reader} a \textit{fat\_writer} a zbývající dvě rutiny vykonávají zadané úkony. Při spuštění se pomocí dedikované funkce určí požadovaná procedura a případně i počet vláken. Pokud je zadána neplatná kombinace parametrů nebo pokud je první parametr \textbf{help}, na obrazovku se vypíše instrukce pro použití a výkon programu skončí. Jinak se vykoná požadovaná instrukce definovaná v odpovídajícím souboru.
+\subsection{1. část: Kontrola délky řetězce FAT}
+Ověření správné délky řetězce fat lze provést dvěma různými způsoby: hrubě podle počtu clusterů, kde se uložená délka řetězce vydělí délkou clusteru a výsledek se porovná s počtem clusterů napočítaných v řetězu od začátku souboru do značky FAT\_FILE\_END, anebo jemně podle znaků v jednotlivých clusterech celého řetězce. Svoje řešení jsem vypracovával na jemném základu a celkovou délku souboru vypočítávám s přesností na znaky. Pokud vycházím z předpokladu že se clustery vyplňují od začátku a nenačíná se další cluster, pokud předchozí není zaplněný, stačí spočítat clustery, které nejsou v řetězci konečné, vynásobit jejich počet stanovenou délkou clusteru a připočíst k mezivýsledku délku posledního clusteru řetězce zjištěnou pomocí funkce \texttt{strlen}.
+Bezpečnost paralelního výpočtu zajišťuje návrh ve stylu farmer worker, kdy se takzvaný farmer stará o přidělování souborů a jednotliví workeři provádějí výpočty. V tomto návrhovém vzoru nastávají dvě kritické sekce při čtení ze souboru: jedna je načítání \texttt{root\_directory} záznamů a druhá nastává při načítání clusterů řetězce. Obě tyto kritické sekce jsou řešeny mutexem, který hlídá přístup do souboru.
+\subsection{2. část: Setřesení volného místa}
+Aplikace funguje na dedikovaném modelu založeném na MVC architektuře. Při každém spuštění se načte odpovídající kontrolér, v němž se vykoná vhodná akce, která zpracuje uživatelův požadavek a připraví výsledek pro šablonovací část aplikace.
+
+\section{Závěr}
+
+
+
+%------------------------------------------
+
+\end{document}

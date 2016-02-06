@@ -1,0 +1,10 @@
+*
+!.gitignore
+!*.c
+!*.h
+!make*
+!doc
+doc/*
+!doc/*.tex
+!doc/img
+!doc/img/*
