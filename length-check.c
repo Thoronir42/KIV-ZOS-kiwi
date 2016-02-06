@@ -114,12 +114,11 @@ int check_farmer_load_next_cluster(struct check_worker* p_ch_w, struct check_far
 
 void *check_worker_run(struct check_worker* p_ch_w) {
 	unsigned int next_cl,
-			total_length,
-			cluster_length;
+			total_length, current_clusters;
 	//printf("Running worker %02d\n", p_ch_w->worker_id);
 	while (check_farmer_load_next_file(p_ch_w->ch_f, p_ch_w->p_root_directory)) {
 		p_ch_w->file_seq_num++;
-		total_length = 0;
+		current_clusters = 0;
 
 
 		next_cl = p_ch_w->p_root_directory->first_cluster;
@@ -127,9 +126,11 @@ void *check_worker_run(struct check_worker* p_ch_w) {
 		do {
 			p_ch_w->next_cluster = next_cl;
 			next_cl = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
-			total_length += (cluster_length = strlen(p_ch_w->p_cluster));
-			//printf("cl %04d\t%d\t %s\n", p_ch_w->next_cluster, cluster_length, p_ch_w->p_cluster);
-
+			if(next_cl != FAT_FILE_END){
+				current_clusters++;
+			} else {
+				total_length = current_clusters * p_ch_w->ch_f->p_boot_record->cluster_size + strlen(p_ch_w->p_cluster);
+			}
 		} while (next_cl != FAT_BAD_CLUSTER && next_cl != FAT_FILE_END);
 		printf("(W%02d-F%03d): %16s => c: %d / e: %d \n",
 				p_ch_w->worker_id, p_ch_w->file_seq_num,
