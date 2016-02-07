@@ -250,7 +250,7 @@ int main_checkFileLength(int threads) {
 	if (threads < 1) {
 		return 1;
 	}
-	int i;
+	int i, res_ok, res_err;
 
 	struct check_farmer *p_check_farmer;
 	struct check_worker *p_check_worker[threads];
@@ -279,6 +279,13 @@ int main_checkFileLength(int threads) {
 	for(i = 0; i < threads; i++){
 		delete_check_worker(p_check_worker[i]);
 	}
+	res_ok = p_check_farmer->results[0];
+	res_err= p_check_farmer->results[1];
+	printf("Length check done\n");
+	printf("Total files checked: %04d\n", res_ok + res_err);
+	printf("Files with correct length  : %04d\n", res_ok);
+	printf("Files with incorrect length: %04d\n", res_err);
+	
 	delete_check_farmer(p_check_farmer);	
 	
 	return 0;

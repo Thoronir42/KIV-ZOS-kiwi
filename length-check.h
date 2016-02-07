@@ -12,6 +12,9 @@ struct check_farmer {
 	
 	int cur_file;
 	pthread_mutex_t* file_count_lock;
+	
+	int results[2];
+	pthread_mutex_t* result_lock;
 
 	long int root_directory_offset;
 	long int data_cluster_offset;
