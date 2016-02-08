@@ -2,6 +2,7 @@
 #define	CLUSTER_SHAKE
 
 #include <pthread.h>
+#include <semaphore.h>
 
 #include "fat-operator.h"
 // Struktura citajiciho farmare
@@ -24,6 +25,7 @@ struct shake_farmer {
 	struct root_directory *p_root_directory;
 	
 	char *cluster_content;
+	sem_t* sem_cluster_access;
 
 	long int offset_fat;
 	long int offset_root_directory;
@@ -46,6 +48,9 @@ struct shake_worker {
 	unsigned int search_item;
 	
 	int chunk_put_offset;
+	
+	unsigned int hold_fat;
+	unsigned char* hold_cluster;
 };
 
 
