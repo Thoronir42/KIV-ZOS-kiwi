@@ -14,13 +14,13 @@ const int NO_SHAKE_JOB = -1;
 
 int shake_analyze_fat(struct shake_farmer *p_s_f) {
 	int chunk_last_index = p_s_f->CLUSTER_CHUNK_SIZE - 1;
-
+	
 	int i, cl_ch_i, non_empty, bad_clusters, mod, cluster_last_non_empty;
 	cl_ch_i = non_empty = bad_clusters = 0;
-
+	
 	int cur_FAT_item;
 
-	printf("FAT analyzation starting with chunk size %d... ", p_s_f->CLUSTER_CHUNK_SIZE);
+	//printf("FAT analyzation starting with chunk size %d... ", p_s_f->CLUSTER_CHUNK_SIZE);
 
 	for (i = 0; i < p_s_f->p_boot_record->cluster_count; i++) {
 		cur_FAT_item = p_s_f->FAT[i];
@@ -35,10 +35,10 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 
 		mod = non_empty++ % p_s_f->CLUSTER_CHUNK_SIZE;
 		if (mod == 0) {
-			printf("cl_ch_start on %04d\n", cluster_last_non_empty);
+			//printf("cl_ch_start on %04d\n", cluster_last_non_empty);
 			p_s_f->cluster_chunk_read_beginings[cl_ch_i] = cluster_last_non_empty;
 		} else if (mod == chunk_last_index) {
-			printf("cl_ch_end   on %04d\n", cluster_last_non_empty);
+			//printf("cl_ch_end   on %04d\n", cluster_last_non_empty);
 			p_s_f->cluster_chunk_read_ends[cl_ch_i++] = cluster_last_non_empty;
 		}
 		if (cur_FAT_item != FAT_FILE_END) {
@@ -52,15 +52,17 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 		p_s_f->cluster_chunks_not_empty++;
 		p_s_f->cluster_chunk_last_size = mod;
 		p_s_f->cluster_chunk_read_ends[cl_ch_i] = cluster_last_non_empty;
-		printf("cl_ch_end   on %04d\n", cluster_last_non_empty);
+		//printf("cl_ch_end   on %04d\n", cluster_last_non_empty);
 	} else {
 		p_s_f->cluster_chunk_last_size = p_s_f->CLUSTER_CHUNK_SIZE;
 	}
+	
+	
 
-	printf("done\n");
-	printf("Non empty clusters: %04d, bad clusters: %02d\n", non_empty, bad_clusters);
-	printf("Last chunk: %02d\tLast chunk size: %d\n\n",
-			p_s_f->cluster_chunks_not_empty, p_s_f->cluster_chunk_last_size);
+	//printf("done\n");
+	//printf("Non empty clusters: %04d, bad clusters: %02d\n", non_empty, bad_clusters);
+	//printf("Last chunk: %02d\tLast chunk size: %d\n\n",
+	//		p_s_f->cluster_chunks_not_empty, p_s_f->cluster_chunk_last_size);
 	return 0;
 
 }
