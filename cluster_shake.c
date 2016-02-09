@@ -15,10 +15,10 @@ const int NO_SHAKE_JOB = -1;
 
 int shake_analyze_fat(struct shake_farmer *p_s_f) {
 	int chunk_last_index = p_s_f->CLUSTER_CHUNK_SIZE - 1;
-	
+
 	int i, cl_ch_i, non_empty, bad_clusters, mod, cluster_last_non_empty;
 	cl_ch_i = non_empty = bad_clusters = 0;
-	
+
 	int cur_FAT_item;
 
 	//printf("FAT analyzation starting with chunk size %d... ", p_s_f->CLUSTER_CHUNK_SIZE);
@@ -57,8 +57,8 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 	} else {
 		p_s_f->cluster_chunk_last_size = p_s_f->CLUSTER_CHUNK_SIZE;
 	}
-	
-	
+
+
 
 	//printf("done\n");
 	//printf("Non empty clusters: %04d, bad clusters: %02d\n", non_empty, bad_clusters);
@@ -108,9 +108,9 @@ struct shake_farmer *create_shake_farmer(char* FS_path) {
 	tmp->lock_cluster_chunk_counter = malloc(sizeof (pthread_mutex_t));
 	pthread_mutex_init(tmp->lock_cluster_chunk_counter, NULL);
 
-	tmp->sem_cluster_access = malloc(sizeof(sem_t) * tmp->p_boot_record->cluster_count);
-	for(i = 0; i < tmp->p_boot_record->cluster_count; i++){
-		sem_init(tmp->sem_cluster_access + i, 0, 1);
+	tmp->sem_cluster_access = malloc(sizeof (sem_t) * tmp->p_boot_record->cluster_count);
+	for (i = 0; i < tmp->p_boot_record->cluster_count; i++) {
+		sem_init(tmp->sem_cluster_access + i, 0, 2);
 	}
 	// inicializace a nacteni root directory
 	tmp->offset_root_directory = ftell(tmp->file_system);
@@ -137,7 +137,7 @@ struct shake_farmer *create_shake_farmer(char* FS_path) {
 
 int delete_shake_farmer(struct shake_farmer *p_s_f) {
 	int i;
-	
+
 	free(p_s_f->p_boot_record);
 	free(p_s_f->FAT);
 	free(p_s_f->FAT_rev);
@@ -151,11 +151,11 @@ int delete_shake_farmer(struct shake_farmer *p_s_f) {
 	pthread_mutex_destroy(p_s_f->lock_cluster_chunk_counter);
 	free(p_s_f->lock_cluster_chunk_counter);
 
-	for(i = 0; i < p_s_f->p_boot_record->cluster_count; i++){
+	for (i = 0; i < p_s_f->p_boot_record->cluster_count; i++) {
 		sem_destroy(p_s_f->sem_cluster_access + i);
 	}
 	free(p_s_f->sem_cluster_access);
-	
+
 	fclose(p_s_f->file_system);
 
 	free(p_s_f);
@@ -169,8 +169,8 @@ struct shake_worker *create_shake_worker(struct shake_farmer *p_s_f, int w_id) {
 	tmp->worker_id = w_id;
 
 	tmp->file_system_operator = fopen("shaken.fat", "r+");
-	
-	tmp->hold_cluster = malloc(sizeof(char) * p_s_f->p_boot_record->cluster_size);
+
+	tmp->hold_cluster = malloc(sizeof (char) * p_s_f->p_boot_record->cluster_size);
 	//tmp->file_system_operator = fopen(p_s_f->FS_path, "r+");
 
 	return tmp;
@@ -264,4 +264,11 @@ void *shake_worker_run(struct shake_worker * p_s_w) {
 			shake_worker_move_cluster(p_s_f, p_s_w, p_s_w->chunk_put_offset + put_index, p_s_w->search_chunk_start + p_s_w->search_index);
 		}
 	}
+}
+
+void shake_write_FAT_back(struct shake_farmer *p_s_f) {
+	int fat_size;
+	fat_size = sizeof (unsigned int) * p_s_f->p_boot_record->cluster_count;
+	fseek(p_s_f->file_system, p_s_f->offset_fat + fat_size, SEEK_SET);
+	fwrite(p_s_f->FAT, fat_size, p_s_f->p_boot_record->fat_copies, p_s_f->file_system);
 }

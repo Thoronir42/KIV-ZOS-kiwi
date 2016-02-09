@@ -77,5 +77,6 @@ int shake_farmer_load_next_cluster(struct shake_worker* p_s_w, struct shake_farm
 
 void *shake_worker_run();
 
+void shake_write_FAT_back(struct shake_farmer *p_s_f);
 
 #endif	/* CLUSTER_SHAKE */

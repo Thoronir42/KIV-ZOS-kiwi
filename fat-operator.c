@@ -322,6 +322,8 @@ int main_moveClustersToStart(int threads) {
 		pthread_join(p_threads[i], NULL);
 	}
 	
+	shake_write_FAT_back(p_shake_farmer);
+	
 	for(i = 0; i < threads; i++){
 		delete_shake_worker(p_shake_worker[i]);
 	}
