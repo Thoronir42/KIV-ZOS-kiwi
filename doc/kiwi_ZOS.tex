@@ -11,7 +11,7 @@
 \usepackage{indentfirst}
 \usepackage{listings}
 \usepackage{color}
-\usepackage{hyperref}
+\usepackage{multirow}
 
 %Pravidlo pro řádkování
 \renewcommand{\baselinestretch}{1.5}
@@ -57,7 +57,6 @@
 \textbf{Osobní číslo:} A13B0443P\\
 \textbf{E-mail:} kiwi@students.zcu.cz\\
 \textbf{Datum:} {\large \today\par} %datum
-\textbf{www:} \url{https://logickehry.zcu.cz/}
 
 }
 
@@ -95,8 +94,42 @@ Aplikace obsahuje čtyři rutiny, mezi kterými lze vybírat požadovanou pomoc�
 Ověření správné délky řetězce fat lze provést dvěma různými způsoby: hrubě podle počtu clusterů, kde se uložená délka řetězce vydělí délkou clusteru a výsledek se porovná s počtem clusterů napočítaných v řetězu od začátku souboru do značky FAT\_FILE\_END, anebo jemně podle znaků v jednotlivých clusterech celého řetězce. Svoje řešení jsem vypracovával na jemném základu a celkovou délku souboru vypočítávám s přesností na znaky. Pokud vycházím z předpokladu že se clustery vyplňují od začátku a nenačíná se další cluster, pokud předchozí není zaplněný, stačí spočítat clustery, které nejsou v řetězci konečné, vynásobit jejich počet stanovenou délkou clusteru a připočíst k mezivýsledku délku posledního clusteru řetězce zjištěnou pomocí funkce \texttt{strlen}.
 Bezpečnost paralelního výpočtu zajišťuje návrh ve stylu farmer worker, kdy se takzvaný farmer stará o přidělování souborů a jednotliví workeři provádějí výpočty. V tomto návrhovém vzoru nastávají dvě kritické sekce při čtení ze souboru: jedna je načítání \texttt{root\_directory} záznamů a druhá nastává při načítání clusterů řetězce. Obě tyto kritické sekce jsou řešeny mutexem, který hlídá přístup do souboru.
 \subsection{2. část: Setřesení volného místa}
-Aplikace funguje na dedikovaném modelu založeném na MVC architektuře. Při každém spuštění se načte odpovídající kontrolér, v němž se vykoná vhodná akce, která zpracuje uživatelův požadavek a připraví výsledek pro šablonovací část aplikace.
+Setřásání volného místa funguje opět podle návrhového vzoru farmer-worker, kdy jednotlivá vlákna náležící workerům žádají farmáře o přidělení práce. Farmář se o přidělení práce rozhoduje na základě analýzy tabulky FAT, kdy si postupně prohlídne všechny záznamy a rozdělí si je do shluků (cluster chunků) jednotné velikosti.
 
+\section{Měření výkonu}
+\begin{tabular}{ l r }
+
+\begin{tabular}{| c || c | c |}
+\hline
+\multirow{2}{*}{Pož. vláken} & \multicolumn{2}{c |}{Délka vykonávání} \\
+				& Kontrola délky & Setřesení \\ \hline \hline
+1 & xxx & xxx \\ \hline
+2 & xxx & xxx \\ \hline
+3 & xxx & xxx \\ \hline
+4 & xxx & xxx \\ \hline
+5 & xxx & xxx \\ \hline
+6 & xxx & xxx \\ \hline
+7 & xxx & xxx \\ \hline
+8 & xxx & xxx \\ \hline
+
+\end{tabular}
+&
+\begin{tabular}{| c | c |}
+\hline
+\multicolumn{2}{|c |}{Konfigurace VB stroje} \\ \hline \hline
+OS & Debian 64-bit \\ \hline
+Operační paměť & 1024 MB \\ \hline
+Přiřazených CPU & 2 \\ \hline
+\multicolumn{2}{c}{} \\
+\hline
+\multicolumn{2}{| c |}{Systémové prostředky} \\ \hline \hline
+CPU & Intel Core i7 \\ \hline
+Frekvence CPU & 2.40GHz \\ \hline
+Počet jader & 2 \\ \hline
+Paměť & 1024 MB \\ \hline
+
+\end{tabular}
+\end{tabular}
 \section{Závěr}
 
 
