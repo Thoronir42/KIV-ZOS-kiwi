@@ -209,27 +209,35 @@ int shake_worker_search_fat(struct shake_worker *p_s_w, struct shake_farmer *p_s
 }
 
 int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p_s_w, unsigned int where_to, unsigned int where_from) {
-	if(where_to == where_from){
+	if (where_to == where_from) {
 		return 0;
 	}
-	unsigned int from_prev_cluster = p_s_f->FAT_rev[where_from];
+	unsigned int previous_in_chain, next_in_chain;
 	
-	sem_wait(p_s_f->sem_cluster_access + from_prev_cluster);
-	fseek(p_s_w->file_system_operator, p_s_f->offset_fat, SEEK_SET);
-	fwrite
-	sem_wait
+	// double-locks current cluster to make sure no other operation is currently happening to actual chunk
+	sem_wait(p_s_f->sem_cluster_access + where_from);
+	sem_wait(p_s_f->sem_cluster_access + where_from);
+	
+	// lock previous
+	previous_in_chain = p_s_f->FAT_rev[where_from];
+	sem_trywait(p_s_f->sem_cluster_access + previous_in_chain);
+	
+	// lock next
+	next_in_chain = p_s_f->FAT[where_from];
+	sem_trywait(p_s_f->sem_cluster_access + next_in_chain);
+	
 	int sem_to_val, sem_from_val;
 	sem_getvalue(p_s_f->sem_cluster_access + where_to, &sem_to_val);
 	sem_getvalue(p_s_f->sem_cluster_access + where_from, &sem_from_val);
-	
+
 	printf("(W%02d-CH%02d): P = %02d[%04d+%d]: %05d\n"
 			"to_sem #%04d:%d\tfrom_sem #%04d:%d\n",
 			p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
 			where_to, p_s_w->search_chunk_start, p_s_w->search_index, p_s_w->search_item,
 			where_to, sem_to_val, where_from, sem_from_val);
-	
+
 	return 1;
-	
+
 }
 
 void *shake_worker_run(struct shake_worker * p_s_w) {
