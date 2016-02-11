@@ -209,6 +209,10 @@ int shake_worker_search_fat(struct shake_worker *p_s_w, struct shake_farmer *p_s
 	return 1;
 }
 
+int valid_cluster_link(unsigned int p) {
+	return !(p == FAT_FILE_END || p == FAT_UNUSED || p == FAT_BAD_CLUSTER);
+}
+
 int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p_s_w, unsigned int where_to, unsigned int where_from) {
 	if (where_to == where_from) {
 		return 0;
@@ -229,21 +233,33 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 
 	// lock adjacent clusters
 	previous_in_chain = p_s_f->FAT_rev[where_from];
-	sem_trywait(p_s_f->sem_cluster_access + previous_in_chain);
-	
-	// lock next
+	if (valid_cluster_link(previous_in_chain)) {
+		sem_wait(p_s_f->sem_cluster_access + previous_in_chain);
+	} else {
+		previous_in_chain = FAT_FILE_END;
+	}
 	next_in_chain = p_s_f->FAT[where_from];
-	sem_trywait(p_s_f->sem_cluster_access + next_in_chain);
-	
-	int sem_to_val, sem_from_val;
-	sem_getvalue(p_s_f->sem_cluster_access + where_to, &sem_to_val);
-	sem_getvalue(p_s_f->sem_cluster_access + where_from, &sem_from_val);
+	if (valid_cluster_link(next_in_chain)) {
+		sem_wait(p_s_f->sem_cluster_access + next_in_chain);
+	} else {
+		next_in_chain = FAT_FILE_END;
+	}
+	// release of semaphore locks
+	if (previous_in_chain != FAT_FILE_END) {
+		sem_wait(p_s_f->sem_cluster_access + previous_in_chain);
+	}
+	if (next_in_chain != FAT_FILE_END) {
+		sem_post(p_s_f->sem_cluster_access + next_in_chain);
+	}
+	sem_post_multiple(p_s_f->sem_cluster_access + where_from, 2);
+	sem_post_multiple(p_s_f->sem_cluster_access + where_to, 2);
+
 
 	printf("(W%02d-CH%02d): P = %02d[%04d+%d]: %05d\n"
-			"to_sem #%04d:%d\tfrom_sem #%04d:%d\n",
+			"Content: %s",
 			p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
 			where_to, p_s_w->search_chunk_start, p_s_w->search_index, p_s_w->search_item,
-			where_to, sem_to_val, where_from, sem_from_val);
+			p_s_w->hold_cluster);
 
 	return 1;
 
