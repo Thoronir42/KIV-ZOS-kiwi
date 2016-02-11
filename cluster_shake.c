@@ -210,7 +210,7 @@ int shake_worker_search_fat(struct shake_worker *p_s_w, struct shake_farmer *p_s
 }
 
 int valid_cluster_link(unsigned int p) {
-	return !(p == FAT_FILE_END || p == FAT_UNUSED || p == FAT_BAD_CLUSTER);
+	return !(p == FAT_UNUSED || p == FAT_BAD_CLUSTER);
 }
 
 int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p_s_w, unsigned int where_to, unsigned int where_from) {
@@ -243,6 +243,20 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 		sem_wait(p_s_f->sem_cluster_access + next_in_chain);
 	} else {
 		next_in_chain = FAT_FILE_END;
+	}
+
+	// load'n'store current cluster from source to its destination
+	fseek(p_s_w->file_system_operator, p_s_f->offset_data_cluster + where_from * sizeof (char) * p_s_f->p_boot_record->cluster_size, SEEK_SET);
+	fread(p_s_w->hold_cluster, sizeof (char) * p_s_f->p_boot_record->cluster_size, 1, p_s_w->file_system_operator);
+	fseek(p_s_w->file_system_operator, p_s_f->offset_data_cluster + where_to * sizeof (char) * p_s_f->p_boot_record->cluster_size, SEEK_SET);
+	fwrite(p_s_w->hold_cluster, sizeof (char) * p_s_f->p_boot_record->cluster_size, 1, p_s_w->file_system_operator);
+
+	p_s_f->FAT[where_to] = p_s_f->FAT[where_from];
+	if (previous_in_chain != FAT_FILE_END) {
+		p_s_f->FAT[previous_in_chain] = where_to;
+	}
+	if (previous_in_chain != FAT_FILE_END) {
+		p_s_f->FAT_rev[next_in_chain] = where_to;
 	}
 	// release of semaphore locks
 	if (previous_in_chain != FAT_FILE_END) {
