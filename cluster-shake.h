@@ -35,6 +35,7 @@ struct shake_farmer {
 // Struktura citace delky souboru
 struct shake_worker {
 	int worker_id;
+	int nonfree_sleepers;
 	
 	struct shake_farmer *s_f;
 	

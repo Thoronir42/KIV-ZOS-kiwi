@@ -167,6 +167,7 @@ struct shake_worker *create_shake_worker(struct shake_farmer *p_s_f, int w_id) {
 
 	tmp->s_f = p_s_f;
 	tmp->worker_id = w_id;
+	tmp->nonfree_sleepers = 0;
 
 	tmp->file_system_operator = fopen("shaken.fat", "r+");
 
@@ -213,12 +214,20 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 		return 0;
 	}
 	unsigned int previous_in_chain, next_in_chain;
-	
+
 	// double-locks current cluster to make sure no other operation is currently happening to actual chunk
 	sem_wait(p_s_f->sem_cluster_access + where_from);
 	sem_wait(p_s_f->sem_cluster_access + where_from);
-	
-	// lock previous
+
+	// sleep as long as destination cluster isn't free, then double-lock it
+	while (p_s_f->FAT[where_to]) {
+		p_s_w->nonfree_sleepers++;
+		sleep(1);
+	}
+	sem_wait(p_s_f->sem_cluster_access + where_to);
+	sem_wait(p_s_f->sem_cluster_access + where_to);
+
+	// lock adjacent clusters
 	previous_in_chain = p_s_f->FAT_rev[where_from];
 	sem_trywait(p_s_f->sem_cluster_access + previous_in_chain);
 	
