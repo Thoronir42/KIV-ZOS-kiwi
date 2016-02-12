@@ -308,6 +308,7 @@ int main_moveClustersToStart(int threads) {
 	// priprava farmer-worker struktur
 	p_shake_farmer = create_shake_farmer(file_system_path);
 	shake_analyze_fat(p_shake_farmer);
+	shake_analyze_root_directory(p_shake_farmer);
 	for(i = 0; i < threads; i++){
 		p_shake_worker[i] = create_shake_worker(p_shake_farmer, i + 1);
 	}
@@ -322,7 +323,7 @@ int main_moveClustersToStart(int threads) {
 		pthread_join(p_threads[i], NULL);
 	}
 	
-	shake_write_FAT_back(p_shake_farmer);
+	shake_write_back(p_shake_farmer);
 	
 	for(i = 0; i < threads; i++){
 		delete_shake_worker(p_shake_worker[i]);

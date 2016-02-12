@@ -13,6 +13,23 @@
 const int CL_CHUNK_SIZE = 4;
 const int NO_SHAKE_JOB = -1;
 
+int shake_analyze_root_directory(struct shake_farmer *p_s_f) {
+	unsigned int i;
+	struct root_directory *cur_rd;
+	for (i = 0; i < p_s_f->p_boot_record->root_directory_max_entries_count; i++) {
+		printf("i: %04d, ", i);
+		cur_rd = &p_s_f->p_root_directory[i];
+		printf("FC: %04d\n", cur_rd->first_cluster);
+		if(cur_rd->first_cluster > 4000){
+			printf("owie\n");
+			continue;
+		}
+		p_s_f->rd_links[cur_rd->first_cluster] = i;
+		p_s_f->FAT_rev[cur_rd->first_cluster] = FAT_FILE_END;
+	}
+	printf("SA_RD done\n");
+}
+
 int shake_analyze_fat(struct shake_farmer *p_s_f) {
 	int chunk_last_index = p_s_f->CLUSTER_CHUNK_SIZE - 1;
 
@@ -112,10 +129,13 @@ struct shake_farmer *create_shake_farmer(char* FS_path) {
 	for (i = 0; i < tmp->p_boot_record->cluster_count; i++) {
 		sem_init(tmp->sem_cluster_access + i, 0, 2);
 	}
-	// inicializace a nacteni root directory
+	// inicializace a nacteni root directory + znacek zpetne ukazujicich z FAT na root_directory
 	tmp->offset_root_directory = ftell(tmp->file_system);
 	tmp->p_root_directory = malloc(sizeof (struct root_directory) * tmp->p_boot_record->root_directory_max_entries_count);
 	fread(tmp->p_root_directory, sizeof (struct root_directory), tmp->p_boot_record->root_directory_max_entries_count, tmp->file_system);
+
+	tmp->rd_links = malloc(sizeof (unsigned int) * tmp->p_boot_record->cluster_count);
+	memset(tmp->rd_links, FAT_UNUSED, tmp->p_boot_record->cluster_count);
 
 	// inicializace a nacteni datovych clusteru
 	tmp->offset_data_cluster = ftell(tmp->file_system);
@@ -142,6 +162,8 @@ int delete_shake_farmer(struct shake_farmer *p_s_f) {
 	free(p_s_f->FAT);
 	free(p_s_f->FAT_rev);
 	free(p_s_f->p_root_directory);
+	free(p_s_f->rd_links);
+
 	free(p_s_f->cluster_content);
 
 	free(p_s_f->cluster_chunk_read_beginings);
@@ -217,20 +239,20 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 	if (where_to == where_from) {
 		return 0;
 	}
-	unsigned int previous_in_chain, next_in_chain;
-
+	unsigned int previous_in_chain, next_in_chain, file_num;
 	// double-locks current cluster to make sure no other operation is currently happening to actual chunk
 	sem_wait(p_s_f->sem_cluster_access + where_from);
 	sem_wait(p_s_f->sem_cluster_access + where_from);
 
 	// sleep as long as destination cluster isn't free, then double-lock it
-	while (p_s_f->FAT[where_to]) {
+	while (p_s_f->FAT[where_to] != FAT_UNUSED) {
 		p_s_w->nonfree_sleepers++;
+		printf("%d not free\n", where_to);
 		sleep(1);
 	}
 	sem_wait(p_s_f->sem_cluster_access + where_to);
 	sem_wait(p_s_f->sem_cluster_access + where_to);
-
+	
 	// lock adjacent clusters
 	previous_in_chain = p_s_f->FAT_rev[where_from];
 	if (valid_cluster_link(previous_in_chain)) {
@@ -250,9 +272,14 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 	fread(p_s_w->hold_cluster, sizeof (char) * p_s_f->p_boot_record->cluster_size, 1, p_s_w->file_system_operator);
 	fseek(p_s_w->file_system_operator, p_s_f->offset_data_cluster + where_to * sizeof (char) * p_s_f->p_boot_record->cluster_size, SEEK_SET);
 	fwrite(p_s_w->hold_cluster, sizeof (char) * p_s_f->p_boot_record->cluster_size, 1, p_s_w->file_system_operator);
-
+	printf("Move rd FC");
+	if(p_s_f->rd_links[where_from] != FAT_UNUSED){
+		file_num = p_s_f->rd_links[where_from];
+		(p_s_f->p_root_directory + file_num)->first_cluster = where_to;
+	}
 	p_s_f->FAT[where_to] = p_s_f->FAT[where_from];
 	if (previous_in_chain != FAT_FILE_END) {
+		printf("(W%02d-CH%02d): %04d has precedestor: %04d\n", p_s_w->worker_id, p_s_w->assigned_cluster_chunk, where_from, previous_in_chain);
 		p_s_f->FAT[previous_in_chain] = where_to;
 	}
 	if (previous_in_chain != FAT_FILE_END) {
@@ -260,13 +287,15 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 	}
 	// release of semaphore locks
 	if (previous_in_chain != FAT_FILE_END) {
-		sem_wait(p_s_f->sem_cluster_access + previous_in_chain);
+		sem_post(p_s_f->sem_cluster_access + previous_in_chain);
 	}
 	if (next_in_chain != FAT_FILE_END) {
 		sem_post(p_s_f->sem_cluster_access + next_in_chain);
 	}
-	sem_post_multiple(p_s_f->sem_cluster_access + where_from, 2);
-	sem_post_multiple(p_s_f->sem_cluster_access + where_to, 2);
+	sem_post(p_s_f->sem_cluster_access + where_from);
+	sem_post(p_s_f->sem_cluster_access + where_from);
+	sem_post(p_s_f->sem_cluster_access + where_to);
+	sem_post(p_s_f->sem_cluster_access + where_to);
 
 
 	printf("(W%02d-CH%02d): P = %02d[%04d+%d]: %05d\n"
@@ -313,9 +342,12 @@ void *shake_worker_run(struct shake_worker * p_s_w) {
 	}
 }
 
-void shake_write_FAT_back(struct shake_farmer *p_s_f) {
+void shake_write_back(struct shake_farmer *p_s_f) {
 	int fat_size;
 	fat_size = sizeof (unsigned int) * p_s_f->p_boot_record->cluster_count;
-	fseek(p_s_f->file_system, p_s_f->offset_fat + fat_size, SEEK_SET);
+	fseek(p_s_f->file_system, p_s_f->offset_fat, SEEK_SET);
 	fwrite(p_s_f->FAT, fat_size, p_s_f->p_boot_record->fat_copies, p_s_f->file_system);
+	
+	fseek(p_s_f->file_system, p_s_f->offset_root_directory, SEEK_SET);
+	fwrite(p_s_f->p_root_directory, sizeof(struct root_directory), p_s_f->p_boot_record->root_directory_max_entries_count, p_s_f->file_system);
 }

@@ -23,6 +23,7 @@ struct shake_farmer {
 	unsigned int *FAT;
 	unsigned int *FAT_rev;
 	struct root_directory *p_root_directory;
+	int *rd_links;
 	
 	char *cluster_content;
 	sem_t* sem_cluster_access;
@@ -55,6 +56,8 @@ struct shake_worker {
 };
 
 
+int shake_analyze_root_directory(struct shake_farmer* p_s_f);
+
 int shake_analyze_fat(struct shake_farmer *p_s_f);
 
 int write_shaken_headder(struct shake_farmer *p_s_f, char *file_name);
@@ -78,6 +81,6 @@ int shake_farmer_load_next_cluster(struct shake_worker* p_s_w, struct shake_farm
 
 void *shake_worker_run();
 
-void shake_write_FAT_back(struct shake_farmer *p_s_f);
+void shake_write_back(struct shake_farmer *p_s_f);
 
 #endif	/* CLUSTER_SHAKE */
