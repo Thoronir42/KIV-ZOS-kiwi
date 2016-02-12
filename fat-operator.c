@@ -151,6 +151,32 @@ FILE *p_file;
 Hloupoucka ctecka obsahu dat pro verifikaci 
  */
 
+int read_print_boot_record(struct boot_record *p_boot_record) {
+	printf("-------------------------------------------------------- \n");
+	printf("BOOT RECORD \n");
+	printf("-------------------------------------------------------- \n");
+	printf("volume_descriptor :%s\n", p_boot_record->volume_descriptor);
+	printf("fat_type :%d\n", p_boot_record->fat_type);
+	printf("fat_copies :%d\n", p_boot_record->fat_copies);
+	printf("cluster_size :%d\n", p_boot_record->cluster_size);
+	printf("root_directory_max_entries_count :%ld\n", p_boot_record->root_directory_max_entries_count);
+	printf("cluster count :%d\n", p_boot_record->cluster_count);
+	printf("reserved clusters :%d\n", p_boot_record->reserved_cluster_count);
+	printf("signature :%s\n", p_boot_record->signature);
+	return 1;
+}
+
+int read_print_root_directory(struct root_directory *p_root_directory, int i) {
+	printf("FILE %d \n", i);
+	printf("file_name :%s\n", p_root_directory->file_name);
+	printf("file_mod :%s\n", p_root_directory->file_mod);
+	printf("file_type :%d\n", p_root_directory->file_type);
+	printf("file_size :%d\n", p_root_directory->file_size);
+	printf("first_cluster :%d\n", p_root_directory->first_cluster);
+
+	return 1;
+}
+
 int main_read() {
 
 	int i;
@@ -169,17 +195,7 @@ int main_read() {
 
 	//prectu boot
 	fread(p_boot_record, sizeof (struct boot_record), 1, p_file);
-	printf("-------------------------------------------------------- \n");
-	printf("BOOT RECORD \n");
-	printf("-------------------------------------------------------- \n");
-	printf("volume_descriptor :%s\n", p_boot_record->volume_descriptor);
-	printf("fat_type :%d\n", p_boot_record->fat_type);
-	printf("fat_copies :%d\n", p_boot_record->fat_copies);
-	printf("cluster_size :%d\n", p_boot_record->cluster_size);
-	printf("root_directory_max_entries_count :%ld\n", p_boot_record->root_directory_max_entries_count);
-	printf("cluster count :%d\n", p_boot_record->cluster_count);
-	printf("reserved clusters :%d\n", p_boot_record->reserved_cluster_count);
-	printf("signature :%s\n", p_boot_record->signature);
+	read_print_boot_record(p_boot_record);
 
 	//prectu fat_copies krat 
 	printf("-------------------------------------------------------- \n");
@@ -211,16 +227,10 @@ int main_read() {
 	printf("-------------------------------------------------------- \n");
 	printf("ROOT DIRECTORY \n");
 	printf("-------------------------------------------------------- \n");
-
 	
 	for (i = 0; i < p_boot_record->root_directory_max_entries_count; i++) {
 		fread(p_root_directory, sizeof (struct root_directory), 1, p_file);
-		printf("FILE %d \n", i);
-		printf("file_name :%s\n", p_root_directory->file_name);
-		printf("file_mod :%s\n", p_root_directory->file_mod);
-		printf("file_type :%d\n", p_root_directory->file_type);
-		printf("file_size :%d\n", p_root_directory->file_size);
-		printf("first_cluster :%d\n", p_root_directory->first_cluster);
+		read_print_root_directory(p_root_directory, i);
 	}
 
 	printf("-------------------------------------------------------- \n");
@@ -253,41 +263,41 @@ int main_checkFileLength(int threads) {
 	int i, res_ok, res_err;
 
 	struct check_farmer *p_check_farmer;
-	struct check_worker *p_check_worker[threads];
+	struct check_worker * p_check_worker[threads];
 	pthread_t p_threads[threads];
 
 	// otevru soubor a pro jistotu skocim na zacatek           
 	p_file = fopen("output.fat", "r");
 	fseek(p_file, 0, SEEK_SET);
-	
+
 	// priprava farmer-worker struktur
 	p_check_farmer = create_check_farmer(p_file);
-	for(i = 0; i < threads; i++){
+	for (i = 0; i < threads; i++) {
 		p_check_worker[i] = create_check_worker(p_check_farmer, i + 1);
 	}
-	
+
 	// spusteni vlaken
-	for(i = 0; i < threads; i++){
+	for (i = 0; i < threads; i++) {
 		pthread_create(&p_threads[i], NULL, check_worker_run, p_check_worker[i]);
 	}
 
 	// ukonceni vlaken a uklid	
-	for(i = 0; i < threads; i++){
+	for (i = 0; i < threads; i++) {
 		pthread_join(p_threads[i], NULL);
 	}
-	
-	for(i = 0; i < threads; i++){
+
+	for (i = 0; i < threads; i++) {
 		delete_check_worker(p_check_worker[i]);
 	}
 	res_ok = p_check_farmer->results[0];
-	res_err= p_check_farmer->results[1];
+	res_err = p_check_farmer->results[1];
 	printf("Length check done\n");
 	printf("Total files checked: %04d\n", res_ok + res_err);
 	printf("Files with correct length  : %04d\n", res_ok);
 	printf("Files with incorrect length: %04d\n", res_err);
-	
-	delete_check_farmer(p_check_farmer);	
-	
+
+	delete_check_farmer(p_check_farmer);
+
 	return 0;
 }
 
@@ -298,37 +308,37 @@ int main_moveClustersToStart(int threads) {
 	int i;
 
 	struct shake_farmer *p_shake_farmer;
-	struct shake_worker *p_shake_worker[threads];
+	struct shake_worker * p_shake_worker[threads];
 	pthread_t p_threads[threads];
-	
+
 	char file_system_path[30];
 	memset(file_system_path, '\0', sizeof (file_system_path));
 	strcpy(file_system_path, "output.fat");
-	
+
 	// priprava farmer-worker struktur
 	p_shake_farmer = create_shake_farmer(file_system_path);
 	shake_analyze_fat(p_shake_farmer);
 	shake_analyze_root_directory(p_shake_farmer);
-	for(i = 0; i < threads; i++){
+	for (i = 0; i < threads; i++) {
 		p_shake_worker[i] = create_shake_worker(p_shake_farmer, i + 1);
 	}
-	
+
 	// spusteni vlaken
-	for(i = 0; i < threads; i++){
+	for (i = 0; i < threads; i++) {
 		pthread_create(&p_threads[i], NULL, shake_worker_run, p_shake_worker[i]);
 	}
 
 	// ukonceni vlaken a uklid	
-	for(i = 0; i < threads; i++){
+	for (i = 0; i < threads; i++) {
 		pthread_join(p_threads[i], NULL);
 	}
-	
+
 	shake_write_back(p_shake_farmer);
-	
-	for(i = 0; i < threads; i++){
+
+	for (i = 0; i < threads; i++) {
 		delete_shake_worker(p_shake_worker[i]);
 	}
-	delete_shake_farmer(p_shake_farmer);	
-	
+	delete_shake_farmer(p_shake_farmer);
+
 	return 0;
 }

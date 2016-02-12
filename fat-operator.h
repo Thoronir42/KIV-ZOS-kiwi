@@ -28,6 +28,10 @@ struct root_directory{
 	unsigned int first_cluster;				//cluster ve FAT, kde soubor zacina - POZOR v cislovani root_directory ma prvni cluster index 0 (viz soubor a.txt)
 };
 
+int read_print_boot_record(struct boot_record* p_boot_record);
+
+int read_print_root_directory(struct root_directory* p_root_directory, int i);
+
 int main_read();
 
 int main_write();
