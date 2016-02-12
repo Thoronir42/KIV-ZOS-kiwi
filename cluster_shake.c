@@ -119,7 +119,9 @@ struct shake_farmer *create_shake_farmer(char* FS_path) {
 	tmp->FAT = malloc(tmp->p_boot_record->cluster_count * sizeof (unsigned int));
 	tmp->FAT_rev = malloc(tmp->p_boot_record->cluster_count * sizeof (unsigned int));
 	tmp->offset_fat = ftell(tmp->file_system);
-	fread(tmp->FAT, sizeof (unsigned int), tmp->p_boot_record->cluster_count, tmp->file_system);
+	for (i = 0; i < tmp->p_boot_record->fat_copies; i++) {
+		fread(tmp->FAT, sizeof (unsigned int), tmp->p_boot_record->cluster_count, tmp->file_system);
+	}
 
 	// inicializace cluster mutexu
 	tmp->lock_cluster_chunk_counter = malloc(sizeof (pthread_mutex_t));
