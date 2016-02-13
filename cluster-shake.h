@@ -8,6 +8,7 @@
 // Struktura farmare setreseni
 struct shake_farmer {
 	const int CLUSTER_CHUNK_SIZE;				// pevne dany pocet clusteru v chunku
+	const char empty_char;							// znak konce clusteru
 	
 	char* FS_path;								// cesta k "soubor. systemu"
 	FILE* file_system;							// rozhrsni pro "soub. system"

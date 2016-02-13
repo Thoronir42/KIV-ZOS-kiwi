@@ -16,7 +16,7 @@ const int NO_SHAKE_JOB = -1;
 int shake_analyze_root_directory(struct shake_farmer *p_s_f) {
 	unsigned int i;
 	struct root_directory *cur_rd;
-	for(i = 0; i < p_s_f->p_boot_record->cluster_count; i++){
+	for (i = 0; i < p_s_f->p_boot_record->cluster_count; i++) {
 		p_s_f->rd_links[i] = FAT_UNUSED;
 	}
 	for (i = 0; i < p_s_f->p_boot_record->root_directory_max_entries_count; i++) {
@@ -147,6 +147,7 @@ struct shake_farmer *create_shake_farmer(char* FS_path) {
 
 	// inicializace promennych
 	*(int *) &tmp->CLUSTER_CHUNK_SIZE = CL_CHUNK_SIZE;
+	*(char *) &tmp->empty_char = '\0';
 
 	tmp->cluster_chunk_read_beginings = malloc(sizeof (int) * (tmp->p_boot_record->cluster_count / tmp->CLUSTER_CHUNK_SIZE));
 	tmp->cluster_chunk_read_ends = malloc(sizeof (int) * (tmp->p_boot_record->cluster_count / tmp->CLUSTER_CHUNK_SIZE));
@@ -280,6 +281,9 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 	fread(p_s_w->hold_cluster, sizeof (char) * p_s_f->p_boot_record->cluster_size, 1, p_s_w->file_system_operator);
 	fseek(p_s_w->file_system_operator, p_s_f->offset_data_cluster + where_to * sizeof (char) * p_s_f->p_boot_record->cluster_size, SEEK_SET);
 	fwrite(p_s_w->hold_cluster, sizeof (char) * p_s_f->p_boot_record->cluster_size, 1, p_s_w->file_system_operator);
+	// make cluster appeal like it's empty to fat-reader
+	fseek(p_s_w->file_system_operator, p_s_f->offset_data_cluster + where_from * sizeof (char) * p_s_f->p_boot_record->cluster_size, SEEK_SET);
+	fwrite(&(p_s_f->empty_char), sizeof (char), 1, p_s_w->file_system_operator);
 
 	// if currently moved cluster is beginning of a file, update corresponding root directory entry
 	file_num = p_s_f->rd_links[where_from];
