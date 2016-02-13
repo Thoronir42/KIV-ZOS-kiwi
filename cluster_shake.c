@@ -16,6 +16,9 @@ const int NO_SHAKE_JOB = -1;
 int shake_analyze_root_directory(struct shake_farmer *p_s_f) {
 	unsigned int i;
 	struct root_directory *cur_rd;
+	for(i = 0; i < p_s_f->p_boot_record->cluster_count; i++){
+		p_s_f->rd_links[i] = FAT_UNUSED;
+	}
 	for (i = 0; i < p_s_f->p_boot_record->root_directory_max_entries_count; i++) {
 		cur_rd = p_s_f->p_root_directory + i;
 		if (cur_rd->first_cluster > p_s_f->p_boot_record->cluster_count) {
@@ -136,7 +139,6 @@ struct shake_farmer *create_shake_farmer(char* FS_path) {
 	fread(tmp->p_root_directory, sizeof (struct root_directory), tmp->p_boot_record->root_directory_max_entries_count, tmp->file_system);
 
 	tmp->rd_links = malloc(sizeof (unsigned int) * tmp->p_boot_record->cluster_count);
-	memset(tmp->rd_links, FAT_UNUSED, tmp->p_boot_record->cluster_count);
 
 	// inicializace a nacteni datovych clusteru
 	tmp->offset_data_cluster = ftell(tmp->file_system);
