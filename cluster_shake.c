@@ -235,7 +235,7 @@ int shake_worker_search_fat(struct shake_worker *p_s_w, struct shake_farmer *p_s
 }
 
 int valid_cluster_link(unsigned int p) {
-	return !(p == FAT_UNUSED || p == FAT_BAD_CLUSTER);
+	return !(p == FAT_UNUSED || p == FAT_FILE_END || p == FAT_BAD_CLUSTER);
 }
 
 int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p_s_w, unsigned int where_to, unsigned int where_from) {
@@ -249,6 +249,9 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 
 	// sleep as long as destination cluster isn't free, then double-lock it
 	while (p_s_f->FAT[where_to] != FAT_UNUSED) {
+		if (p_s_f->FAT[where_to] == FAT_BAD_CLUSTER) {
+			break;
+		}
 		p_s_w->nonfree_naps++;
 		printf("%d not free\n", where_to);
 		sleep(1);
@@ -258,12 +261,14 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 
 	// lock adjacent clusters
 	previous_in_chain = p_s_f->FAT_rev[where_from];
+	//printf("Prev in chani: %d\n", previous_in_chain);
 	if (valid_cluster_link(previous_in_chain)) {
 		sem_wait(p_s_f->sem_cluster_access + previous_in_chain);
 	} else {
 		previous_in_chain = FAT_FILE_END;
 	}
 	next_in_chain = p_s_f->FAT[where_from];
+	//printf("Next in chani: %d\n", next_in_chain);
 	if (valid_cluster_link(next_in_chain)) {
 		sem_wait(p_s_f->sem_cluster_access + next_in_chain);
 	} else {
@@ -275,16 +280,17 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 	fread(p_s_w->hold_cluster, sizeof (char) * p_s_f->p_boot_record->cluster_size, 1, p_s_w->file_system_operator);
 	fseek(p_s_w->file_system_operator, p_s_f->offset_data_cluster + where_to * sizeof (char) * p_s_f->p_boot_record->cluster_size, SEEK_SET);
 	fwrite(p_s_w->hold_cluster, sizeof (char) * p_s_f->p_boot_record->cluster_size, 1, p_s_w->file_system_operator);
-	
+
 	// if currently moved cluster is beginning of a file, update corresponding root directory entry
 	file_num = p_s_f->rd_links[where_from];
 	if (file_num != FAT_UNUSED) {
 		printf("Move rd FC\n");
 		(p_s_f->p_root_directory + file_num)->first_cluster = where_to;
 	}
-	
+
 	// update FAT nd FAT_rev to represent the cluster state after the move
 	p_s_f->FAT[where_to] = p_s_f->FAT[where_from];
+	p_s_f->FAT[where_from] = FAT_UNUSED;
 	if (previous_in_chain != FAT_FILE_END) {
 		printf("(W%02d-CH%02d): %04d has precedestor: %04d\n", p_s_w->worker_id, p_s_w->assigned_cluster_chunk, where_from, previous_in_chain);
 		p_s_f->FAT[previous_in_chain] = where_to;
@@ -292,7 +298,7 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 	if (previous_in_chain != FAT_FILE_END) {
 		p_s_f->FAT_rev[next_in_chain] = where_to;
 	}
-	
+
 	// release of semaphore locks
 	if (previous_in_chain != FAT_FILE_END) {
 		sem_post(p_s_f->sem_cluster_access + previous_in_chain);

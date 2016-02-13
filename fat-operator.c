@@ -227,7 +227,7 @@ int main_read() {
 	printf("-------------------------------------------------------- \n");
 	printf("ROOT DIRECTORY \n");
 	printf("-------------------------------------------------------- \n");
-	
+
 	for (i = 0; i < p_boot_record->root_directory_max_entries_count; i++) {
 		fread(p_root_directory, sizeof (struct root_directory), 1, p_file);
 		read_print_root_directory(p_root_directory, i);
@@ -319,22 +319,23 @@ int main_moveClustersToStart(int threads) {
 	p_shake_farmer = create_shake_farmer(file_system_path);
 	shake_analyze_fat(p_shake_farmer);
 	shake_analyze_root_directory(p_shake_farmer);
+
+	// beh setrasani
 	for (i = 0; i < threads; i++) {
 		p_shake_worker[i] = create_shake_worker(p_shake_farmer, i + 1);
 	}
-
-	// spusteni vlaken
 	for (i = 0; i < threads; i++) {
 		pthread_create(&p_threads[i], NULL, shake_worker_run, p_shake_worker[i]);
 	}
 
-	// ukonceni vlaken a uklid	
+	// ukonceni vlaken
 	for (i = 0; i < threads; i++) {
 		pthread_join(p_threads[i], NULL);
 	}
-
+	// zapsani zmen ve FAT a root directory
 	shake_write_back(p_shake_farmer);
 
+	// uklid
 	for (i = 0; i < threads; i++) {
 		delete_shake_worker(p_shake_worker[i]);
 	}
