@@ -177,7 +177,7 @@ int read_print_root_directory(struct root_directory *p_root_directory, int i) {
 	return 1;
 }
 
-int main_read() {
+int main_read(char* read_src) {
 
 	int i;
 	//pointery na struktury root a boot                         
@@ -190,7 +190,7 @@ int main_read() {
 
 
 	//otevru soubor a pro jistotu skocim na zacatek           
-	p_file = fopen("output.fat", "r");
+	p_file = fopen(read_src, "r");
 	fseek(p_file, 0, SEEK_SET);
 
 	//prectu boot

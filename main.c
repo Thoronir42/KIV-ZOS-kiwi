@@ -12,10 +12,9 @@
 
 int operation;
 int req_thread_count;
-char *read_src;
+char read_src[30];
 
 int process_parameters(int argc, char *argv[]) {
-	read_src = NULL;
 	operation = -1;
 	int threads;
 	if (argc < 1) {
@@ -28,7 +27,9 @@ int process_parameters(int argc, char *argv[]) {
 
 	} else if (!strcmp("read", argv[0])) {
 		if (argc == 2) {
-			read_src = argv[1];
+			strcpy(read_src, argv[1]);
+		} else {
+			strcpy(read_src, "output.fat");
 		}
 		operation = OP_DEF_READ;
 		return 0;
@@ -93,7 +94,7 @@ int main(int argc, char *argv[]) {
 			op_result = main_write();
 			break;
 		case OP_DEF_READ:
-			op_result = main_read();
+			op_result = main_read(read_src);
 			break;
 		case OP_MY_CHECK:
 			op_result = main_checkFileLength(req_thread_count);
