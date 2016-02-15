@@ -2,6 +2,7 @@
 !.gitignore
 !*.c
 !*.h
+!*.sh
 !make*
 !doc
 doc/*
