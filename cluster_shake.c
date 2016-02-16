@@ -22,14 +22,18 @@ int shake_analyze_root_directory(struct shake_farmer *p_s_f) {
 	for (i = 0; i < p_s_f->p_boot_record->root_directory_max_entries_count; i++) {
 		cur_rd = p_s_f->p_root_directory + i;
 		if (cur_rd->first_cluster > p_s_f->p_boot_record->cluster_count) {
+#ifdef DEBUG
 			printf("Errorneous first cluster on:\n");
+#endif
 			read_print_root_directory(p_s_f->p_root_directory + i, i);
 			continue;
 		}
 		p_s_f->rd_links[cur_rd->first_cluster] = i;
 		p_s_f->FAT_rev[cur_rd->first_cluster] = FAT_FILE_END;
 	}
+#ifdef DEBUG
 	printf("SA_RD done\n");
+#endif
 }
 
 int shake_analyze_fat(struct shake_farmer *p_s_f) {
@@ -40,7 +44,6 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 
 	int cur_FAT_item;
 
-	//printf("FAT analyzation starting with chunk size %d... ", p_s_f->CLUSTER_CHUNK_SIZE);
 
 	for (i = 0; i < p_s_f->p_boot_record->cluster_count; i++) {
 		cur_FAT_item = p_s_f->FAT[i];
@@ -55,10 +58,8 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 
 		mod = non_empty++ % p_s_f->CLUSTER_CHUNK_SIZE;
 		if (mod == 0) {
-			//printf("cl_ch_start on %04d\n", cluster_last_non_empty);
 			p_s_f->cluster_chunk_read_beginings[cl_ch_i] = cluster_last_non_empty;
 		} else if (mod == chunk_last_index) {
-			//printf("cl_ch_end   on %04d\n", cluster_last_non_empty);
 			p_s_f->cluster_chunk_read_ends[cl_ch_i++] = cluster_last_non_empty;
 		}
 		if (cur_FAT_item != FAT_FILE_END) {
@@ -72,17 +73,17 @@ int shake_analyze_fat(struct shake_farmer *p_s_f) {
 		p_s_f->cluster_chunks_not_empty++;
 		p_s_f->cluster_chunk_last_size = mod;
 		p_s_f->cluster_chunk_read_ends[cl_ch_i] = cluster_last_non_empty;
-		//printf("cl_ch_end   on %04d\n", cluster_last_non_empty);
 	} else {
 		p_s_f->cluster_chunk_last_size = p_s_f->CLUSTER_CHUNK_SIZE;
 	}
 
 
-
-	//printf("done\n");
-	//printf("Non empty clusters: %04d, bad clusters: %02d\n", non_empty, bad_clusters);
-	//printf("Last chunk: %02d\tLast chunk size: %d\n\n",
-	//		p_s_f->cluster_chunks_not_empty, p_s_f->cluster_chunk_last_size);
+#ifdef DEBUG
+	printf("done\n");
+	printf("Non empty clusters: %04d, bad clusters: %02d\n", non_empty, bad_clusters);
+	printf("Last chunk: %02d\tLast chunk size: %d\n\n",
+			p_s_f->cluster_chunks_not_empty, p_s_f->cluster_chunk_last_size);
+#endif
 	return 0;
 
 }
@@ -254,7 +255,6 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 			break;
 		}
 		p_s_w->nonfree_naps++;
-		printf("%d not free: %d != %d\n", where_to, p_s_f->FAT[where_to], FAT_UNUSED);
 		sleep(1);
 	}
 	sem_wait(p_s_f->sem_cluster_access + where_to);
@@ -262,14 +262,12 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 
 	// lock adjacent clusters
 	previous_in_chain = p_s_f->FAT_rev[where_from];
-	//printf("Prev in chani: %d\n", previous_in_chain);
 	if (valid_cluster_link(previous_in_chain)) {
 		sem_wait(p_s_f->sem_cluster_access + previous_in_chain);
 	} else {
 		previous_in_chain = FAT_FILE_END;
 	}
 	next_in_chain = p_s_f->FAT[where_from];
-	//printf("Next in chani: %d\n", next_in_chain);
 	if (valid_cluster_link(next_in_chain)) {
 		sem_wait(p_s_f->sem_cluster_access + next_in_chain);
 	} else {
@@ -287,17 +285,11 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 
 	// if currently moved cluster is beginning of a file, update corresponding root directory entry
 	file_num = p_s_f->rd_links[where_from];
-	if (file_num != FAT_UNUSED) {
-		printf("(W%02d-CH%02d): File: %02d cluster %04d => %04d\n",
-				p_s_w->worker_id, p_s_w->assigned_cluster_chunk, file_num, where_from, where_to);
-		(p_s_f->p_root_directory + file_num)->first_cluster = where_to;
-	}
 
 	// update FAT nd FAT_rev to represent the cluster state after the move
 	p_s_f->FAT[where_to] = p_s_f->FAT[where_from];
 	p_s_f->FAT[where_from] = FAT_UNUSED;
 	if (previous_in_chain != FAT_FILE_END) {
-		printf("(W%02d-CH%02d): %04d has precedestor: %04d\n", p_s_w->worker_id, p_s_w->assigned_cluster_chunk, where_from, previous_in_chain);
 		p_s_f->FAT[previous_in_chain] = where_to;
 	}
 	if (previous_in_chain != FAT_FILE_END) {
@@ -316,13 +308,13 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 	sem_post(p_s_f->sem_cluster_access + where_to);
 	sem_post(p_s_f->sem_cluster_access + where_to);
 
-
+#ifdef DEBUG
 	printf("(W%02d-CH%02d): Put %03d[%04d+%d]: %05d\n"
 			"Content: %s\n",
 			p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
 			where_to, p_s_w->search_chunk_start, p_s_w->search_index, p_s_w->search_item,
 			p_s_w->hold_cluster);
-
+#endif
 	return 1;
 
 }
@@ -330,9 +322,9 @@ int shake_worker_move_cluster(struct shake_farmer *p_s_f, struct shake_worker *p
 void *shake_worker_run(struct shake_worker * p_s_w) {
 	struct shake_farmer *p_s_f = p_s_w->s_f;
 	int put_index;
-
+#ifdef DEBUG
 	printf("Running shake worker %02d with chunk size %d\n", p_s_w->worker_id, p_s_f->CLUSTER_CHUNK_SIZE);
-
+#endif
 	while (shake_next_cluster_chunk(p_s_w, p_s_w->s_f)) { // Dokud jsou nepřesunuté chunky
 		p_s_w->chunk_put_offset = p_s_w->assigned_cluster_chunk * p_s_f->CLUSTER_CHUNK_SIZE;
 		p_s_w->search_chunk_start = p_s_f->cluster_chunk_read_beginings[p_s_w->assigned_cluster_chunk];
@@ -345,20 +337,23 @@ void *shake_worker_run(struct shake_worker * p_s_w) {
 		p_s_w->search_index = -1;
 		for (put_index = 0; put_index < p_s_f->CLUSTER_CHUNK_SIZE; put_index++) { // přesouvej nalezené clustery
 			if (p_s_w->assigned_cluster_chunk == p_s_f->cluster_chunks_not_empty - 1 && put_index >= p_s_f->cluster_chunk_last_size) {
-				printf("Last chunk, last cluster.\n");
 				break;
 			}
 
 			// prohledani FAT podle cluster chunku
 			if (!shake_worker_search_fat(p_s_w, p_s_f)) {
+#ifdef DEBUG
 				printf("(W%02d-CH%02d): SI = %04d exceeded SCE = %04d\n",
 						p_s_w->worker_id, p_s_w->assigned_cluster_chunk,
 						p_s_w->search_index, p_s_w->search_chunk_end);
+#endif
 				break;
 			}
 			shake_worker_move_cluster(p_s_f, p_s_w, p_s_w->chunk_put_offset + put_index, p_s_w->search_chunk_start + p_s_w->search_index);
 		}
+#ifdef DEBUG
 		printf("(W%02d-CH%02d): Chunk done\n", p_s_w->worker_id, p_s_w->assigned_cluster_chunk);
+#endif
 	}
 }
 

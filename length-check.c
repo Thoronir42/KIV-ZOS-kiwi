@@ -126,7 +126,9 @@ void *check_worker_run(struct check_worker* p_ch_w) {
 			total_length, current_clusters;
 	unsigned int res[2];
 	res[CHECK_OK] = res[CHECK_MISMATCH] = 0;
-	//printf("Running worker %02d\n", p_ch_w->worker_id);
+#ifdef DEBUG
+	printf("Running worker %02d\n", p_ch_w->worker_id);
+#endif
 	while (check_farmer_load_next_file(p_ch_w->ch_f, p_ch_w->p_root_directory)) { // dokud jsou soubory ke kontrole
 		p_ch_w->file_seq_num++;
 		current_clusters = 0;
@@ -143,10 +145,12 @@ void *check_worker_run(struct check_worker* p_ch_w) {
 				total_length = current_clusters * p_ch_w->ch_f->p_boot_record->cluster_size + strlen(p_ch_w->p_cluster);
 			}
 		} while (next_cl != FAT_BAD_CLUSTER && next_cl != FAT_FILE_END);
+#ifdef DEBUG
 		printf("(W%02d-F%03d): %16s => c: %d / e: %d \n",
 				p_ch_w->worker_id, p_ch_w->file_seq_num,
 				p_ch_w->p_root_directory->file_name,
 				total_length, p_ch_w->p_root_directory->file_size);
+#endif
 		if (total_length == p_ch_w->p_root_directory->file_size) {
 			res[CHECK_OK]++;
 		} else {
@@ -157,5 +161,4 @@ void *check_worker_run(struct check_worker* p_ch_w) {
 	p_ch_w->ch_f->results[CHECK_OK] += res[CHECK_OK];
 	p_ch_w->ch_f->results[CHECK_MISMATCH] += res[CHECK_MISMATCH];
 	pthread_mutex_unlock(p_ch_w->ch_f->result_lock);
-	//printf("Worker %02d don.\n", p_ch_w->worker_id);
 }

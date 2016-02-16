@@ -10,6 +10,8 @@
 #define OP_MY_CHECK 4
 #define OP_MY_SHAKE 8
 
+#define DEBUG 1
+
 int operation;
 int req_thread_count;
 char read_src[30];
