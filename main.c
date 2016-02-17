@@ -90,7 +90,9 @@ int main(int argc, char *argv[]) {
 	float total_time;
 
 	t_start = clock();
+#ifdef DEBUG
 	printf("Starting operation %s\n", argv[1]);
+#endif
 	switch (operation) {
 		case OP_DEF_WRITE:
 			op_result = main_write();
@@ -108,7 +110,11 @@ int main(int argc, char *argv[]) {
 
 	t_end = clock();
 	total_time = ((float) (t_end - t_start) / CLOCKS_PER_SEC) * 1000;
+#ifdef DEBUG
 	printf("Job %s with %d threads took %.02f ms.\n", argv[1], req_thread_count, total_time);
+#else
+	printf("%.02f ms", total_time);
+#endif
 
 	return op_result;
 }

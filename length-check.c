@@ -11,6 +11,7 @@
 
 #define CHECK_OK 0
 #define CHECK_MISMATCH 1
+#define CHECK_BAD_CLUSTER 2
 
 struct check_farmer* create_check_farmer(FILE* p_file) {
 	int root_directory_offset = 0, data_cluster_offset = 0,
@@ -106,25 +107,23 @@ int check_farmer_load_next_file(struct check_farmer* ch_f, struct root_directory
 }
 
 int check_farmer_load_next_cluster(struct check_worker* p_ch_w, struct check_farmer* p_ch_f) {
-	long cluster_offset = p_ch_f->data_cluster_offset + p_ch_w->next_cluster * sizeof (char) * p_ch_f->p_boot_record->cluster_size;
+	long cluster_offset;
+	cluster_offset = p_ch_f->data_cluster_offset + p_ch_w->next_cluster * sizeof (char) * p_ch_f->p_boot_record->cluster_size;
+	
 	pthread_mutex_lock(p_ch_f->file_lock);
 	fseek(p_ch_f->file_system, cluster_offset, SEEK_SET);
 	fread(p_ch_w->p_cluster, sizeof (char) * p_ch_f->p_boot_record->cluster_size, 1, p_ch_f->file_system);
-
 	pthread_mutex_unlock(p_ch_f->file_lock);
-	if (p_ch_w->next_cluster == FAT_BAD_CLUSTER || p_ch_w->next_cluster == FAT_FILE_END) {
+	
+	if (p_ch_w->next_cluster == FAT_BAD_CLUSTER || p_ch_w->next_cluster == FAT_FILE_END || p_ch_w->next_cluster > p_ch_f->p_boot_record->cluster_count) {
 		return 0;
 	}
-	if (p_ch_w->next_cluster > p_ch_f->p_boot_record->cluster_count) {
-		return 0;
-	}
-	return p_ch_f->fat_item[p_ch_w->next_cluster];
+	return p_ch_w-> next_cluster = p_ch_f->fat_item[p_ch_w->next_cluster];
 }
 
 void *check_worker_run(struct check_worker* p_ch_w) {
-	unsigned int next_cl,
-			total_length, current_clusters;
-	unsigned int res[2];
+	unsigned int total_length, current_clusters, expected_clusters, loop_check = FAT_UNUSED;
+	unsigned int res[3];
 	res[CHECK_OK] = res[CHECK_MISMATCH] = 0;
 #ifdef DEBUG
 	printf("Running worker %02d\n", p_ch_w->worker_id);
@@ -132,19 +131,33 @@ void *check_worker_run(struct check_worker* p_ch_w) {
 	while (check_farmer_load_next_file(p_ch_w->ch_f, p_ch_w->p_root_directory)) { // dokud jsou soubory ke kontrole
 		p_ch_w->file_seq_num++;
 		current_clusters = 0;
+		expected_clusters = p_ch_w->p_root_directory->file_size / p_ch_w->ch_f->p_boot_record->cluster_size + 1;
 
 
-		next_cl = p_ch_w->p_root_directory->first_cluster;
-		p_ch_w->next_cluster = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
+		p_ch_w->next_cluster = p_ch_w->p_root_directory->first_cluster;
+		check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
 		do {
-			p_ch_w->next_cluster = next_cl;
-			next_cl = check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f);
-			if (next_cl != FAT_FILE_END) {
+			if(current_clusters > expected_clusters){
+				if(loop_check == FAT_UNUSED){
+					loop_check = p_ch_w->next_cluster;
+				} else if (loop_check == p_ch_w->next_cluster){
+					fprintf(stderr, "File %s with starting cluster %04d leads to a loop!",p_ch_w->p_root_directory->file_name, p_ch_w->p_root_directory->first_cluster);
+					break;
+				}
+				
+			}
+			if (p_ch_w->next_cluster != FAT_FILE_END) {
 				current_clusters++;
 			} else {
 				total_length = current_clusters * p_ch_w->ch_f->p_boot_record->cluster_size + strlen(p_ch_w->p_cluster);
+				break;
 			}
-		} while (next_cl != FAT_BAD_CLUSTER && next_cl != FAT_FILE_END);
+		} while (check_farmer_load_next_cluster(p_ch_w, p_ch_w->ch_f));
+		if(p_ch_w->next_cluster == FAT_BAD_CLUSTER){
+			fprintf(stderr, "File %s ended with a bad cluster and wasnt checked",p_ch_w->p_root_directory->file_name);
+			res[CHECK_BAD_CLUSTER]++;
+			continue;
+		}
 #ifdef DEBUG
 		printf("(W%02d-F%03d): %16s => c: %d / e: %d \n",
 				p_ch_w->worker_id, p_ch_w->file_seq_num,
@@ -160,5 +173,6 @@ void *check_worker_run(struct check_worker* p_ch_w) {
 	pthread_mutex_lock(p_ch_w->ch_f->result_lock);
 	p_ch_w->ch_f->results[CHECK_OK] += res[CHECK_OK];
 	p_ch_w->ch_f->results[CHECK_MISMATCH] += res[CHECK_MISMATCH];
+	p_ch_w->ch_f->results[CHECK_BAD_CLUSTER] += res[CHECK_BAD_CLUSTER];
 	pthread_mutex_unlock(p_ch_w->ch_f->result_lock);
 }
